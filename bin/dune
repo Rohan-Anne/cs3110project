@@ -1,4 +1,9 @@
 (executable
  (public_name ocaml-voxel)
  (name main)
- (libraries ocaml_voxel))
+ (libraries ocaml_voxel tsdl tgls.tgl3)
+ (preprocess
+  (pps ppx_blob))
+ (preprocessor_deps
+  (file shaders/fragment.frag)
+  (file shaders/vertex.vert)))

@@ -12,6 +12,9 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "dune" {>= "3.21"}
   "ocaml"
+  "ppx_blob"
+  "tsdl"
+  "tgls"
   "odoc" {with-doc}
 ]
 build: [

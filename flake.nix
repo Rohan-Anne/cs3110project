@@ -5,7 +5,7 @@
   };
 
   outputs =
-    inputs@{ flake-parts, ... }:
+    inputs@{ flake-parts, nixpkgs, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -15,14 +15,19 @@
       ];
 
       perSystem =
-        { pkgs, ... }:
-        {
+        { system, ... }:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ (import ./overlays/tgls.nix) ];
+          };
+        in {
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               ocaml
               opam
               dune_3
-              ocamlPackages.odoc
+              ocamlPackages.findlib
               ocamlPackages.ocaml-lsp
               ocamlPackages.ocamlformat
               ocamlPackages.utop
@@ -30,6 +35,15 @@
               ocamlPackages.ppxlib
               ocamlPackages.bisect_ppx
               ocamlPackages.batteries
+              ocamlPackages.odoc
+              ocamlPackages.merlin
+              ocamlPackages.topkg
+              ocamlPackages.ocamlbuild
+              ocamlPackages.tsdl
+              ocamlPackages.ppx_blob
+              ocamlPackages.tgls
+              SDL2
+              glslang
             ];
           };
         };

@@ -19,7 +19,7 @@
  (name ocaml-voxel)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends ocaml ppx_blob tsdl tgls)
  (tags
   ("add topics" "to describe" your project)))
 
