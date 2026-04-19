@@ -1,0 +1,6 @@
+_build/
+_opam/
+_coverage/
+submissions
+.envrc
+gitlog.txt
