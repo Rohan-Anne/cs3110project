@@ -21,26 +21,21 @@
             inherit system;
             overlays = [ (import ./overlays/tgls.nix) ];
           };
-        in {
+        in
+        {
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               ocaml
               opam
               dune_3
-              ocamlPackages.findlib
               ocamlPackages.ocaml-lsp
               ocamlPackages.ocamlformat
               ocamlPackages.utop
               ocamlPackages.ounit2
               ocamlPackages.ppxlib
               ocamlPackages.bisect_ppx
-              ocamlPackages.batteries
-              ocamlPackages.odoc
-              ocamlPackages.merlin
-              ocamlPackages.topkg
-              ocamlPackages.ocamlbuild
-              ocamlPackages.tsdl
               ocamlPackages.ppx_blob
+              ocamlPackages.tsdl
               ocamlPackages.tgls
               SDL2
               glslang
