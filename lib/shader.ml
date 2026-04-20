@@ -1,6 +1,10 @@
 open Tgl3
 
-type t = { program : int }
+type t = {
+  program : int;
+  (* cache of mappings of uniform name to location *)
+  uniform_cache : (string, int) Hashtbl.t;
+}
 
 (* error handling util *)
 let fail kind log = failwith (Printf.sprintf "%s failed:\n%s" kind log)
@@ -45,7 +49,26 @@ let create ~vertex_source ~fragment_source =
     Gl.delete_program program;
     fail "program link" log
   end;
-  { program }
+  { program; uniform_cache = Hashtbl.create 16 }
 
 let use t = Gl.use_program t.program
+
+let uniform_location t name =
+  match Hashtbl.find_opt t.uniform_cache name with
+  | Some loc -> loc
+  | None ->
+      let loc = Gl.get_uniform_location t.program name in
+      Hashtbl.replace t.uniform_cache name loc;
+      loc
+
+(* persistent scratch buffer to prevent bigarray alloc *)
+let mat4_scratch = Gl_utils.bigarray_create Bigarray.float32 16
+
+let set_uniform_mat4 t name values =
+  let loc = uniform_location t name in
+  if loc <> -1 then begin
+    Array.iteri (Bigarray.Array1.set mat4_scratch) values;
+    Gl.uniform_matrix4fv loc 1 false mat4_scratch
+  end
+
 let destroy t = Gl.delete_program t.program

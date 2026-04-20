@@ -15,6 +15,16 @@ let () =
   let buf =
     Buffer.create ~positions:triangle_positions ~colors:triangle_colors
   in
+  (* static camera, two units back, looking forward *)
+  let proj =
+    Math3d.perspective ~fov_y_radians:(Float.pi /. 3.0) ~aspect:(800.0 /. 600.0)
+      ~near:0.1 ~far:100.0
+  in
+  let view =
+    Math3d.view_from_camera ~position:(Math3d.vec3 0.0 0.0 2.0) ~yaw:0.0
+      ~pitch:0.0
+  in
+  let mvp = Math3d.multiply proj view in
   (* reusable event record *)
   let event = Sdl.Event.create () in
   let running = ref true in
@@ -32,6 +42,7 @@ let () =
     done;
     Gl.clear Gl.color_buffer_bit;
     Shader.use shader;
+    Shader.set_uniform_mat4 shader "mvp" mvp;
     Buffer.draw buf;
     Window.swap win
   done;
