@@ -1,8 +1,5 @@
 open Tsdl
 
-(* clamp pitch just below ±π/2 to avoid gimbal-lock artifacts at vertical look
-   extremes — 1.54 rad ≈ 88.2° *)
-let pitch_limit = 1.54
 
 type t = {
   mutable pos : Math3d.vec3;
@@ -15,7 +12,7 @@ let create ~pos ~yaw ~pitch = { pos; yaw; pitch }
 let apply_mouse_look t ~dx ~dy ~sensitivity =
   t.yaw <- t.yaw -. (dx *. sensitivity);
   t.pitch <- t.pitch -. (dy *. sensitivity);
-  t.pitch <- Float.max (-.pitch_limit) (Float.min pitch_limit t.pitch)
+  t.pitch <- Float.max (-.Config.pitch_limit) (Float.min Config.pitch_limit t.pitch)
 
 let forward t = Math3d.normalize (Math3d.vec3 (-.sin t.yaw) 0.0 (-.cos t.yaw))
 let right t = Math3d.normalize (Math3d.vec3 (cos t.yaw) 0.0 (-.sin t.yaw))

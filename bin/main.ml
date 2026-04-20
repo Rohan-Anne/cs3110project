@@ -60,17 +60,17 @@ let () =
     Input.poll input;
     if input.resized then Window.update_viewport win;
     Camera.apply_mouse_look camera ~dx:input.mouse_dx ~dy:input.mouse_dy
-      ~sensitivity:0.002;
+      ~sensitivity:Config.mouse_sensitivity;
     let move =
-      Camera.movement_from_input camera input ~move_speed:2. ~sprint_speed:4.
-        ~dt
+      Camera.movement_from_input camera input ~move_speed:Config.move_speed
+        ~sprint_speed:Config.sprint_speed ~dt
     in
     camera.pos <- Math3d.add camera.pos move;
     let w, h = Sdl.gl_get_drawable_size win.window in
     let aspect = float_of_int w /. float_of_int h in
     let proj =
-      Math3d.perspective ~fov_y_radians:(Float.pi /. 3.0) ~aspect ~near:0.1
-        ~far:100.0
+      Math3d.perspective ~fov_y_radians:Config.fov_y ~aspect ~near:Config.near
+        ~far:Config.far
     in
     let mvp = Math3d.multiply proj (Camera.view camera) in
     Gl.clear Gl.(color_buffer_bit lor depth_buffer_bit);
