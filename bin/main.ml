@@ -3,8 +3,40 @@ open Tgl3
 
 let vertex_shader_source = [%blob "shaders/vertex.vert"]
 let fragment_shader_source = [%blob "shaders/fragment.frag"]
-let triangle_positions = [| 0.0; 0.5; 0.0; -0.5; -0.5; 0.0; 0.5; -0.5; 0.0 |]
-let triangle_colors = [| 1.0; 0.0; 0.0; 0.0; 1.0; 0.0; 0.0; 0.0; 1.0 |]
+
+let cube_positions =
+  [|
+    (* front *)
+    -0.5; -0.5;  0.5;   0.5; -0.5;  0.5;   0.5;  0.5;  0.5;
+    -0.5; -0.5;  0.5;   0.5;  0.5;  0.5;  -0.5;  0.5;  0.5;
+    (* back *)
+     0.5; -0.5; -0.5;  -0.5; -0.5; -0.5;  -0.5;  0.5; -0.5;
+     0.5; -0.5; -0.5;  -0.5;  0.5; -0.5;   0.5;  0.5; -0.5;
+    (* left *)
+    -0.5; -0.5; -0.5;  -0.5; -0.5;  0.5;  -0.5;  0.5;  0.5;
+    -0.5; -0.5; -0.5;  -0.5;  0.5;  0.5;  -0.5;  0.5; -0.5;
+    (* right *)
+     0.5; -0.5;  0.5;   0.5; -0.5; -0.5;   0.5;  0.5; -0.5;
+     0.5; -0.5;  0.5;   0.5;  0.5; -0.5;   0.5;  0.5;  0.5;
+    (* top *)
+    -0.5;  0.5;  0.5;   0.5;  0.5;  0.5;   0.5;  0.5; -0.5;
+    -0.5;  0.5;  0.5;   0.5;  0.5; -0.5;  -0.5;  0.5; -0.5;
+    (* bottom *)
+    -0.5; -0.5; -0.5;   0.5; -0.5; -0.5;   0.5; -0.5;  0.5;
+    -0.5; -0.5; -0.5;   0.5; -0.5;  0.5;  -0.5; -0.5;  0.5;
+  |] [@ocamlformat "disable"]
+
+let cube_colors =
+  let face c = Array.init 18 (fun i -> c.(i mod 3)) in
+  Array.concat
+    [
+      face [| 1.0; 0.4; 0.4 |]; (* front:  red *)
+      face [| 0.4; 1.0; 1.0 |]; (* back:   cyan *)
+      face [| 0.4; 1.0; 0.4 |]; (* left:   green *)
+      face [| 1.0; 0.4; 1.0 |]; (* right:  magenta *)
+      face [| 0.4; 0.4; 1.0 |]; (* top:    blue *)
+      face [| 1.0; 1.0; 0.4 |]; (* bottom: yellow *)
+    ] [@ocamlformat "disable"]
 
 let () =
   let win = Window.create ~title:"ocaml-voxel" ~w:800 ~h:600 in
@@ -12,9 +44,8 @@ let () =
     Shader.create ~vertex_source:vertex_shader_source
       ~fragment_source:fragment_shader_source
   in
-  let buf =
-    Buffer.create ~positions:triangle_positions ~colors:triangle_colors
-  in
+  let buf = Buffer.create ~positions:cube_positions ~colors:cube_colors in
+  Gl.enable Gl.depth_test;
   let input = Input.create () in
   let camera =
     Camera.create ~pos:(Math3d.vec3 0.0 0.0 2.0) ~yaw:0.0 ~pitch:0.0
@@ -42,7 +73,7 @@ let () =
         ~far:100.0
     in
     let mvp = Math3d.multiply proj (Camera.view camera) in
-    Gl.clear Gl.color_buffer_bit;
+    Gl.clear Gl.(color_buffer_bit lor depth_buffer_bit);
     Shader.use shader;
     Shader.set_uniform_mat4 shader "mvp" mvp;
     Buffer.draw buf;
