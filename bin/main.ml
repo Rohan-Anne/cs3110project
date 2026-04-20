@@ -15,31 +15,33 @@ let () =
   let buf =
     Buffer.create ~positions:triangle_positions ~colors:triangle_colors
   in
-  (* static camera, two units back, looking forward *)
-  let proj =
-    Math3d.perspective ~fov_y_radians:(Float.pi /. 3.0) ~aspect:(800.0 /. 600.0)
-      ~near:0.1 ~far:100.0
+  let input = Input.create () in
+  let camera =
+    Camera.create ~pos:(Math3d.vec3 0.0 0.0 2.0) ~yaw:0.0 ~pitch:0.0
   in
-  let view =
-    Math3d.view_from_camera ~position:(Math3d.vec3 0.0 0.0 2.0) ~yaw:0.0
-      ~pitch:0.0
-  in
-  let mvp = Math3d.multiply proj view in
-  (* reusable event record *)
-  let event = Sdl.Event.create () in
-  let running = ref true in
-  while !running do
-    while Sdl.poll_event (Some event) do
-      match Sdl.Event.(get event typ |> enum) with
-      | `Quit -> running := false
-      | `Key_down
-        when Sdl.Event.(get event keyboard_scancode) = Sdl.Scancode.escape ->
-          running := false
-      | `Window_event
-        when Sdl.Event.(get event window_event_id)
-             = Sdl.Event.window_event_size_changed -> Window.update_viewport win
-      | _ -> ()
-    done;
+  (* capture mouse input to use mouse to look *)
+  ignore (Sdl.set_relative_mouse_mode true);
+  let prev_ticks = ref (Sdl.get_ticks ()) in
+  while not input.quit do
+    let now = Sdl.get_ticks () in
+    let dt = Int32.to_float (Int32.sub now !prev_ticks) /. 1000.0 in
+    prev_ticks := now;
+    Input.poll input;
+    if input.resized then Window.update_viewport win;
+    Camera.apply_mouse_look camera ~dx:input.mouse_dx ~dy:input.mouse_dy
+      ~sensitivity:0.002;
+    let move =
+      Camera.movement_from_input camera input ~move_speed:2. ~sprint_speed:4.
+        ~dt
+    in
+    camera.pos <- Math3d.add camera.pos move;
+    let w, h = Sdl.gl_get_drawable_size win.window in
+    let aspect = float_of_int w /. float_of_int h in
+    let proj =
+      Math3d.perspective ~fov_y_radians:(Float.pi /. 3.0) ~aspect ~near:0.1
+        ~far:100.0
+    in
+    let mvp = Math3d.multiply proj (Camera.view camera) in
     Gl.clear Gl.color_buffer_bit;
     Shader.use shader;
     Shader.set_uniform_mat4 shader "mvp" mvp;
