@@ -6,7 +6,6 @@ type vec3 = {
   z : float;
 }
 
-let pi = 4.0 *. atan 1.0
 let vec3 x y z = { x; y; z }
 let add a b = vec3 (a.x +. b.x) (a.y +. b.y) (a.z +. b.z)
 let sub a b = vec3 (a.x -. b.x) (a.y -. b.y) (a.z -. b.z)
@@ -37,7 +36,6 @@ let identity () =
     1.0;
   |]
 
-(* column-major multiply: a and b are both column-major mat4 *)
 let multiply a b =
   let out = Array.make 16 0.0 in
   for col = 0 to 3 do
@@ -65,7 +63,6 @@ let rotation_y angle =
   let s = sin angle in
   [| c; 0.0; -.s; 0.0; 0.0; 1.0; 0.0; 0.0; s; 0.0; c; 0.0; 0.0; 0.0; 0.0; 1.0 |]
 
-(** standard OpenGL perspective matrix, fov_y in radians *)
 let perspective ~fov_y_radians ~aspect ~near ~far =
   let f = 1.0 /. tan (fov_y_radians /. 2.0) in
   let nf = 1.0 /. (near -. far) in
@@ -88,7 +85,6 @@ let perspective ~fov_y_radians ~aspect ~near ~far =
     0.0;
   |]
 
-(** build a view matrix from position + yaw/pitch angles (radians) *)
 let view_from_camera ~position ~yaw ~pitch =
   let t = translation ~x:(-.position.x) ~y:(-.position.y) ~z:(-.position.z) in
   multiply (rotation_x (-.pitch)) (multiply (rotation_y (-.yaw)) t)

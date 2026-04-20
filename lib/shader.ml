@@ -1,9 +1,9 @@
 open Tgl3
 
 type t = {
-  program : int;
-  (* cache of mappings of uniform name to location *)
+  program : int;  (** the GPU program *)
   uniform_cache : (string, int) Hashtbl.t;
+      (** cache of mappings of uniform name to location *)
 }
 
 (* error handling util *)
@@ -24,7 +24,6 @@ let compile_stage ~shader_type ~label source_code =
   end;
   shader
 
-(** link a vertex and frag shader into a GPU program *)
 let create ~vertex_source ~fragment_source =
   let vertex =
     compile_stage ~shader_type:Gl.vertex_shader ~label:"vertex shader"

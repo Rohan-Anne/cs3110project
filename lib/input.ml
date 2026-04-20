@@ -21,11 +21,16 @@ let create () =
 let is_down inp sc =
   Option.value ~default:false (Hashtbl.find_opt inp.keys_down sc)
 
-let poll input =
-  (* reset the per-frame state *)
+(** reset the input state *)
+let reset input =
   input.mouse_dx <- 0.0;
   input.mouse_dy <- 0.0;
-  input.resized <- false;
+  input.resized <- false
+
+let poll input =
+  (* first reset everything *)
+  reset input;
+  (* then poll for event *)
   let e = Sdl.Event.create () in
   while Sdl.poll_event (Some e) do
     match Sdl.Event.(enum (get e typ)) with

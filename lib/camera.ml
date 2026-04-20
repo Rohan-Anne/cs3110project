@@ -1,6 +1,5 @@
 open Tsdl
 
-
 type t = {
   mutable pos : Math3d.vec3;
   mutable yaw : float;
@@ -12,9 +11,13 @@ let create ~pos ~yaw ~pitch = { pos; yaw; pitch }
 let apply_mouse_look t ~dx ~dy ~sensitivity =
   t.yaw <- t.yaw -. (dx *. sensitivity);
   t.pitch <- t.pitch -. (dy *. sensitivity);
-  t.pitch <- Float.max (-.Config.pitch_limit) (Float.min Config.pitch_limit t.pitch)
+  t.pitch <-
+    Float.max (-.Config.pitch_limit) (Float.min Config.pitch_limit t.pitch)
 
+(** get the unit vector pointing forward relative to the camera *)
 let forward t = Math3d.normalize (Math3d.vec3 (-.sin t.yaw) 0.0 (-.cos t.yaw))
+
+(** get the unit vector pointing right, relative to the camera *)
 let right t = Math3d.normalize (Math3d.vec3 (cos t.yaw) 0.0 (-.sin t.yaw))
 
 (* returns a movement vector, scaled by speed, or zero *)
@@ -23,6 +26,7 @@ let movement_from_input t inp ~move_speed ~sprint_speed ~dt =
   let speed = (if sprint then sprint_speed else move_speed) *. dt in
   let fwd = forward t in
   let rgt = right t in
+  (* up is constant, as there is no roll *)
   let up = Math3d.vec3 0.0 1.0 0.0 in
   let dir = ref (Math3d.vec3 0.0 0.0 0.0) in
   if Input.is_down inp Sdl.Scancode.w then dir := Math3d.add !dir fwd;

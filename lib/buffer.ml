@@ -15,7 +15,6 @@ let bind_attribute ~buffer ~location ~size =
   Gl.enable_vertex_attrib_array location;
   Gl.vertex_attrib_pointer location size Gl.float false 0 (`Offset 0)
 
-(** Uploads position and color arrays to the GPU *)
 let create ~positions ~colors =
   let vao = Gl_utils.get_int (Gl.gen_vertex_arrays 1) in
   let vertex_data = Gl_utils.float32_array positions in
@@ -49,12 +48,10 @@ let create ~positions ~colors =
   Gl.bind_buffer Gl.array_buffer 0;
   { vao; vertex_buffer; color_buffer; count = Array.length positions / 3 }
 
-(* bind the VAO and draw. every three vertices is one triangle *)
 let draw t =
   Gl.bind_vertex_array t.vao;
   Gl.draw_arrays Gl.triangles 0 t.count
 
-(* free all GPU objects *)
 let destroy t =
   Gl_utils.with_int (Gl.delete_vertex_arrays 1) t.vao;
   Gl_utils.with_int (Gl.delete_buffers 1) t.vertex_buffer;

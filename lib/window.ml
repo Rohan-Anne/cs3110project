@@ -40,15 +40,12 @@ let create ~title ~w ~h =
   Gl.clear_color 0.1 0.1 0.1 1.0;
   { window; gl_context }
 
-(** present the back buffer, bc we are double buffering *)
 let swap t = Sdl.gl_swap_window t.window
 
-(** handle resizing *)
 let update_viewport t =
   let w, h = Sdl.gl_get_drawable_size t.window in
   Gl.viewport 0 0 w h
 
-(** stop *)
 let destroy t =
   Sdl.gl_delete_context t.gl_context;
   Sdl.destroy_window t.window;
