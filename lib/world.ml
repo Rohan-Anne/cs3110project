@@ -31,13 +31,14 @@ let generate_chunk world ~cx ~cy ~cz =
   Hashtbl.replace world.chunks (cx, cy, cz) chunk
 
 let block_color = function
-  | Block.Grass -> (0.2, 0.6, 0.1)
-  | Block.Dirt -> (0.55, 0.35, 0.15)
-  | Block.Stone -> (0.45, 0.45, 0.5)
-  | Block.Air -> (0., 0., 0.)
+  | Block.Grass -> Color.make 0.2 0.6 0.1
+  | Block.Dirt -> Color.make 0.55 0.35 0.15
+  | Block.Stone -> Color.make 0.45 0.45 0.5
+  | Block.Air -> Color.make 0. 0. 0.
 
-let add_face positions colors r g b (ax, ay, az) (bx, by, bz) (cx, cy, cz)
+let add_face positions colors c (ax, ay, az) (bx, by, bz) (cx, cy, cz)
     (dx, dy, dz) =
+  let r, g, b = Color.to_tuple c in
   let v x y z =
     positions := Array.append !positions [| x; y; z |];
     colors := Array.append !colors [| r; g; b |]
@@ -66,46 +67,45 @@ let mesh_chunk world chunk =
           let fx = float x in
           let fy = float y in
           let fz = float z in
-          let r, g, b = block_color block in
+          let c = block_color block in
           (* positive x face *)
           if get_block world (x + 1) y z = Block.Air then
-            add_face positions colors (r *. 0.6) (g *. 0.6) (b *. 0.6)
+            add_face positions colors (Color.shade 0.6 c)
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx +. 1., fy, fz +. 1.);
           (* negative x face *)
           if get_block world (x - 1) y z = Block.Air then
-            add_face positions colors (r *. 0.7) (g *. 0.7) (b *. 0.7)
+            add_face positions colors (Color.shade 0.7 c)
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz)
               (fx, fy, fz);
           (* positive y face (top) *)
           if get_block world x (y + 1) z = Block.Air then
-            add_face positions colors r g b
+            add_face positions colors c
               (fx, fy +. 1., fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz +. 1.);
           (* negative y face (bottom) *)
           if get_block world x (y - 1) z = Block.Air then
-            add_face positions colors (r *. 0.5) (g *. 0.5) (b *. 0.5)
+            add_face positions colors (Color.shade 0.5 c)
               (fx, fy, fz +. 1.)
               (fx +. 1., fy, fz +. 1.)
               (fx +. 1., fy, fz)
               (fx, fy, fz);
           (* positive z face *)
           if get_block world x y (z + 1) = Block.Air then
-            add_face positions colors (r *. 0.9) (g *. 0.9) (b *. 0.9)
+            add_face positions colors (Color.shade 0.9 c)
               (fx +. 1., fy, fz +. 1.)
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx +. 1., fy +. 1., fz +. 1.);
           (* negative z face *)
           if get_block world x y (z - 1) = Block.Air then
-            add_face positions colors (r *. 0.8) (g *. 0.8) (b *. 0.8)
-              (fx, fy, fz)
+            add_face positions colors (Color.shade 0.8 c) (fx, fy, fz)
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
               (fx, fy +. 1., fz))
