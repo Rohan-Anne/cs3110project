@@ -23,5 +23,15 @@ val movement_from_input :
   dt:float ->
   Math3d.vec3
 
+(** like [movement_from_input] but only returns horizontal (XZ) movement,
+    for use in survival mode where vertical velocity is handled separately *)
+val ground_movement_from_input :
+  t ->
+  Input.t ->
+  move_speed:float ->
+  sprint_speed:float ->
+  dt:float ->
+  Math3d.vec3
+
 (** compute the view matrix for the current camera state *)
 val view : t -> Math3d.mat4

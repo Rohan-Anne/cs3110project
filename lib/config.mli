@@ -22,3 +22,15 @@ val near : float
 
 (** far clipping plane distance *)
 val far : float
+
+(** player AABB width and depth in blocks *)
+val player_width : float
+
+(** player AABB height in blocks *)
+val player_height : float
+
+(** downward acceleration in blocks/s^2 *)
+val gravity : float
+
+(** initial vertical speed when jumping in blocks/s *)
+val jump_velocity : float

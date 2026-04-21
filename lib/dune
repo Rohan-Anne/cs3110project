@@ -2,4 +2,4 @@
  (name ocaml_voxel)
  (wrapped false)
  (libraries tsdl tgls.tgl3)
- (modules_without_implementation noise physics))
+ (modules_without_implementation noise))

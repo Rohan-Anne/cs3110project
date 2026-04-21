@@ -38,4 +38,18 @@ let movement_from_input t inp ~move_speed ~sprint_speed ~dt =
   if Math3d.length !dir > 0.0 then Math3d.scale (Math3d.normalize !dir) speed
   else !dir
 
+let ground_movement_from_input t inp ~move_speed ~sprint_speed ~dt =
+  let sprint = Input.is_down inp Sdl.Scancode.lctrl in
+  let speed = (if sprint then sprint_speed else move_speed) *. dt in
+  let fwd = forward t in
+  let rgt = right t in
+  let dir = ref (Math3d.vec3 0.0 0.0 0.0) in
+  if Input.is_down inp Sdl.Scancode.w then dir := Math3d.add !dir fwd;
+  if Input.is_down inp Sdl.Scancode.s then dir := Math3d.sub !dir fwd;
+  if Input.is_down inp Sdl.Scancode.d then dir := Math3d.add !dir rgt;
+  if Input.is_down inp Sdl.Scancode.a then dir := Math3d.sub !dir rgt;
+  let flat = Math3d.vec3 !dir.x 0.0 !dir.z in
+  if Math3d.length flat > 0.0 then Math3d.scale (Math3d.normalize flat) speed
+  else flat
+
 let view t = Math3d.view_from_camera ~position:t.pos ~yaw:t.yaw ~pitch:t.pitch
