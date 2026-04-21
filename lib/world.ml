@@ -10,7 +10,7 @@ let get_chunk world cx cy cz = Hashtbl.find_opt world.chunks (cx, cy, cz)
 let coord_to_chunk x =
   let cs = Config.chunk_size in
   if x >= 0 then (x / cs, x mod cs)
-  else (- ((-x + cs - 1) / cs), cs + (x mod cs))
+  else (- ((-x + cs - 1) / cs), ((x mod cs) + cs) mod cs)
 
 let get_block world x y z =
   let cx, bx = coord_to_chunk x in
