@@ -1,5 +1,6 @@
 (** [height_at x z] returns the surface height at world column [(x, z)] in
-    blocks, determined by the noise function *)
+    blocks, determined by the noise function. this is used for spawning the
+    player at the right y level *)
 val height_at : int -> int -> int
 
 (** [fill_chunk ~cx ~cy ~cz] generates and returns the block array for the chunk

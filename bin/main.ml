@@ -4,39 +4,24 @@ open Tgl3
 let vertex_shader_source = [%blob "shaders/vertex.vert"]
 let fragment_shader_source = [%blob "shaders/fragment.frag"]
 
-let cube_positions =
-  [|
-    (* front *)
-    -0.5; -0.5;  0.5;   0.5; -0.5;  0.5;   0.5;  0.5;  0.5;
-    -0.5; -0.5;  0.5;   0.5;  0.5;  0.5;  -0.5;  0.5;  0.5;
-    (* back *)
-     0.5; -0.5; -0.5;  -0.5; -0.5; -0.5;  -0.5;  0.5; -0.5;
-     0.5; -0.5; -0.5;  -0.5;  0.5; -0.5;   0.5;  0.5; -0.5;
-    (* left *)
-    -0.5; -0.5; -0.5;  -0.5; -0.5;  0.5;  -0.5;  0.5;  0.5;
-    -0.5; -0.5; -0.5;  -0.5;  0.5;  0.5;  -0.5;  0.5; -0.5;
-    (* right *)
-     0.5; -0.5;  0.5;   0.5; -0.5; -0.5;   0.5;  0.5; -0.5;
-     0.5; -0.5;  0.5;   0.5;  0.5; -0.5;   0.5;  0.5;  0.5;
-    (* top *)
-    -0.5;  0.5;  0.5;   0.5;  0.5;  0.5;   0.5;  0.5; -0.5;
-    -0.5;  0.5;  0.5;   0.5;  0.5; -0.5;  -0.5;  0.5; -0.5;
-    (* bottom *)
-    -0.5; -0.5; -0.5;   0.5; -0.5; -0.5;   0.5; -0.5;  0.5;
-    -0.5; -0.5; -0.5;   0.5; -0.5;  0.5;  -0.5; -0.5;  0.5;
-  |] [@ocamlformat "disable"]
-
-let cube_colors =
-  let face c = Array.init 18 (fun i -> c.(i mod 3)) in
-  Array.concat
-    [
-      face [| 1.0; 0.4; 0.4 |]; (* front:  red *)
-      face [| 0.4; 1.0; 1.0 |]; (* back:   cyan *)
-      face [| 0.4; 1.0; 0.4 |]; (* left:   green *)
-      face [| 1.0; 0.4; 1.0 |]; (* right:  magenta *)
-      face [| 0.4; 0.4; 1.0 |]; (* top:    blue *)
-      face [| 1.0; 1.0; 0.4 |]; (* bottom: yellow *)
-    ] [@ocamlformat "disable"]
+let build_world_buffer () =
+  let world = World.create () in
+  (* generate a 1x1x1 region of chunks. will make this bigger later, so keep the
+     loop format *)
+  for cx = 0 to 0 do
+    for cy = 0 to 0 do
+      for cz = 0 to 0 do
+        World.generate_chunk world ~cx ~cy ~cz
+      done
+    done
+  done;
+  let all_positions = ref [||] in
+  let all_colors = ref [||] in
+  World.iter world (fun chunk ->
+      let positions, colors = World.mesh_chunk world chunk in
+      all_positions := Array.append !all_positions positions;
+      all_colors := Array.append !all_colors colors);
+  Buffer.create ~positions:!all_positions ~colors:!all_colors
 
 let () =
   let win = Window.create ~title:"ocaml-voxel" ~w:800 ~h:600 in
@@ -44,11 +29,11 @@ let () =
     Shader.create ~vertex_source:vertex_shader_source
       ~fragment_source:fragment_shader_source
   in
-  let buf = Buffer.create ~positions:cube_positions ~colors:cube_colors in
+  let buf = build_world_buffer () in
   Gl.enable Gl.depth_test;
   let input = Input.create () in
   let camera =
-    Camera.create ~pos:(Math3d.vec3 0.0 0.0 2.0) ~yaw:0.0 ~pitch:0.0
+    Camera.create ~pos:(Math3d.vec3 0.0 5.0 10.0) ~yaw:0.0 ~pitch:(-0.3)
   in
   (* capture mouse input to use mouse to look *)
   ignore (Sdl.set_relative_mouse_mode true);
