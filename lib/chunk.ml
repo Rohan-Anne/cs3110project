@@ -14,3 +14,5 @@ let index x y z =
 
 let get chunk x y z = chunk.blocks.(index x y z)
 let set chunk x y z v = chunk.blocks.(index x y z) <- v
+
+let create ~x ~y ~z ~blocks = { x; y; z; blocks }

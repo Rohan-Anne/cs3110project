@@ -19,3 +19,7 @@ val get : t -> int -> int -> int -> Block.t
 
 (** [set chunk x y z v] sets the block at [(x, y, z)] within [chunk] to [v] *)
 val set : t -> int -> int -> int -> Block.t -> unit
+
+(** [create ~x ~y ~z ~blocks] creates a chunk with the given coordinates and
+    block array *)
+val create : x:int -> y:int -> z:int -> blocks:Block.t array -> t
