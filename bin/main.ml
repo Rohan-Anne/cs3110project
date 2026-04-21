@@ -4,7 +4,9 @@ open Tgl3
 let vertex_shader_source = [%blob "shaders/vertex.vert"]
 let fragment_shader_source = [%blob "shaders/fragment.frag"]
 
-type game_mode = Creative | Survival
+type game_mode =
+  | Creative
+  | Survival
 
 let build_world () =
   let world = World.create () in
@@ -50,8 +52,7 @@ let () =
   while not input.quit do
     let now = Sdl.get_ticks () in
     let dt =
-      Float.min 0.05
-        (Int32.to_float (Int32.sub now !prev_ticks) /. 1000.0)
+      Float.min 0.05 (Int32.to_float (Int32.sub now !prev_ticks) /. 1000.0)
     in
     prev_ticks := now;
     Input.poll input;
@@ -61,41 +62,45 @@ let () =
     (* G toggles between creative and survival *)
     let g_now = Input.is_down input Sdl.Scancode.g in
     if g_now && not !prev_g then begin
-      mode := (match !mode with Creative -> Survival | Survival -> Creative);
+      (mode :=
+         match !mode with
+         | Creative -> Survival
+         | Survival -> Creative);
       vel_y := 0.0
     end;
     prev_g := g_now;
     let space_now = Input.is_down input Sdl.Scancode.space in
     (match !mode with
     | Creative ->
-      let move =
-        Camera.movement_from_input camera input ~move_speed:Config.move_speed
-          ~sprint_speed:Config.sprint_speed ~dt
-      in
-      camera.pos <- Math3d.add camera.pos move
+        let move =
+          Camera.movement_from_input camera input ~move_speed:Config.move_speed
+            ~sprint_speed:Config.sprint_speed ~dt
+        in
+        camera.pos <- Math3d.add camera.pos move
     | Survival ->
-      (* gravity accumulates downward each frame *)
-      vel_y := !vel_y -. Config.gravity *. dt;
-      (* jump on rising edge of space, only when on the ground *)
-      if space_now && not !prev_space && !on_ground then
-        vel_y := Config.jump_velocity;
-      let horiz =
-        Camera.ground_movement_from_input camera input
-          ~move_speed:Config.move_speed ~sprint_speed:Config.sprint_speed ~dt
-      in
-      let delta = Math3d.vec3 horiz.x (!vel_y *. dt) horiz.z in
-      let box = Physics.at_position camera.pos in
-      let actual = Physics.move world box delta in
-      (* detect floor collision: wanted to go down but were blocked *)
-      if delta.y < -. 1e-6 && actual.y > delta.y +. 1e-6 then begin
-        on_ground := true;
-        vel_y := 0.0
-      end else begin
-        (* detect ceiling collision: wanted to go up but were blocked *)
-        if delta.y > 1e-6 && actual.y < delta.y -. 1e-6 then vel_y := 0.0;
-        on_ground := false
-      end;
-      camera.pos <- Math3d.add camera.pos actual);
+        (* gravity accumulates downward each frame *)
+        vel_y := !vel_y -. (Config.gravity *. dt);
+        (* jump on rising edge of space, only when on the ground *)
+        if space_now && (not !prev_space) && !on_ground then
+          vel_y := Config.jump_velocity;
+        let horiz =
+          Camera.ground_movement_from_input camera input
+            ~move_speed:Config.move_speed ~sprint_speed:Config.sprint_speed ~dt
+        in
+        let delta = Math3d.vec3 horiz.x (!vel_y *. dt) horiz.z in
+        let box = Physics.at_position camera.pos in
+        let actual = Physics.move world box delta in
+        (* detect floor collision: wanted to go down but were blocked *)
+        if delta.y < -1e-6 && actual.y > delta.y +. 1e-6 then begin
+          on_ground := true;
+          vel_y := 0.0
+        end
+        else begin
+          (* detect ceiling collision: wanted to go up but were blocked *)
+          if delta.y > 1e-6 && actual.y < delta.y -. 1e-6 then vel_y := 0.0;
+          on_ground := false
+        end;
+        camera.pos <- Math3d.add camera.pos actual);
     prev_space := space_now;
     let w, h = Sdl.gl_get_drawable_size win.window in
     let aspect = float_of_int w /. float_of_int h in

@@ -36,7 +36,8 @@ let resolve_x world box dx =
             done
           done
       done
-    end else begin
+    end
+    else begin
       let x0 = ifloor (box.min.x +. dx) and x1 = ifloor box.min.x in
       for bx = x0 to x1 do
         let corr = float_of_int (bx + 1) -. box.min.x in
@@ -69,7 +70,8 @@ let resolve_y world box dy =
             done
           done
       done
-    end else begin
+    end
+    else begin
       let y0 = ifloor (box.min.y +. dy) and y1 = ifloor box.min.y in
       for by = y0 to y1 do
         let corr = float_of_int (by + 1) -. box.min.y in
@@ -101,7 +103,8 @@ let resolve_z world box dz =
             done
           done
       done
-    end else begin
+    end
+    else begin
       let z0 = ifloor (box.min.z +. dz) and z1 = ifloor box.min.z in
       for bz = z0 to z1 do
         let corr = float_of_int (bz + 1) -. box.min.z in
@@ -119,13 +122,17 @@ let resolve_z world box dz =
 let move world box delta =
   let dx = resolve_x world box delta.x in
   let box1 =
-    { min = { box.min with x = box.min.x +. dx };
-      max = { box.max with x = box.max.x +. dx } }
+    {
+      min = { box.min with x = box.min.x +. dx };
+      max = { box.max with x = box.max.x +. dx };
+    }
   in
   let dy = resolve_y world box1 delta.y in
   let box2 =
-    { min = { box1.min with y = box1.min.y +. dy };
-      max = { box1.max with y = box1.max.y +. dy } }
+    {
+      min = { box1.min with y = box1.min.y +. dy };
+      max = { box1.max with y = box1.max.y +. dy };
+    }
   in
   let dz = resolve_z world box2 delta.z in
   vec3 dx dy dz

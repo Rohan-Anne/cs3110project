@@ -23,8 +23,8 @@ val movement_from_input :
   dt:float ->
   Math3d.vec3
 
-(** like [movement_from_input] but only returns horizontal (XZ) movement,
-    for use in survival mode where vertical velocity is handled separately *)
+(** like [movement_from_input] but only returns horizontal (XZ) movement, for
+    use in survival mode where vertical velocity is handled separately *)
 val ground_movement_from_input :
   t ->
   Input.t ->
