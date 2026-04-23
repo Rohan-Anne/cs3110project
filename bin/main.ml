@@ -20,13 +20,14 @@ let build_world () =
   world
 
 let build_world_buffer world =
-  let all_positions = ref [||] in
-  let all_colors = ref [||] in
+  let all_positions = ref [] in
+  let all_colors = ref [] in
   World.iter world (fun chunk ->
       let positions, colors = World.mesh_chunk world chunk in
-      all_positions := Array.append !all_positions positions;
-      all_colors := Array.append !all_colors colors);
-  Buffer.create ~positions:!all_positions ~colors:!all_colors
+      all_positions := positions :: !all_positions;
+      all_colors := colors :: !all_colors);
+  Buffer.create ~positions:(Array.concat !all_positions)
+    ~colors:(Array.concat !all_colors)
 
 let () =
   let win = Window.create ~title:"ocaml-voxel" ~w:800 ~h:600 in

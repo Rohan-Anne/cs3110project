@@ -40,8 +40,8 @@ let add_face positions colors c (ax, ay, az) (bx, by, bz) (cx, cy, cz)
     (dx, dy, dz) =
   let r, g, b = Color.to_tuple c in
   let v x y z =
-    positions := Array.append !positions [| x; y; z |];
-    colors := Array.append !colors [| r; g; b |]
+    positions := [| x; y; z |] :: !positions;
+    colors := [| r; g; b |] :: !colors
   in
   v ax ay az;
   v bx by bz;
@@ -51,8 +51,8 @@ let add_face positions colors c (ax, ay, az) (bx, by, bz) (cx, cy, cz)
   v dx dy dz
 
 let mesh_chunk world chunk =
-  let positions = ref [||] in
-  let colors = ref [||] in
+  let positions = ref [] in
+  let colors = ref [] in
   let wx = Chunk.x chunk * Config.chunk_size in
   let wy = Chunk.y chunk * Config.chunk_size in
   let wz = Chunk.z chunk * Config.chunk_size in
@@ -112,6 +112,6 @@ let mesh_chunk world chunk =
       done
     done
   done;
-  (!positions, !colors)
+  (Array.concat (List.rev !positions), Array.concat (List.rev !colors))
 
 let iter world f = Hashtbl.iter (fun _ c -> f c) world.chunks
