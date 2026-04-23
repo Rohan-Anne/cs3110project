@@ -10,9 +10,9 @@ type game_mode =
 
 let build_world () =
   let world = World.create () in
-  for cx = 0 to 0 do
-    for cy = 0 to 0 do
-      for cz = 0 to 0 do
+  for cx = -5 to 5 do
+    for cy = -5 to 5 do
+      for cz = -5 to 5 do
         World.generate_chunk world ~cx ~cy ~cz
       done
     done
@@ -26,7 +26,8 @@ let build_world_buffer world =
       let positions, colors = World.mesh_chunk world chunk in
       all_positions := positions :: !all_positions;
       all_colors := colors :: !all_colors);
-  Buffer.create ~positions:(Array.concat !all_positions)
+  Buffer.create
+    ~positions:(Array.concat !all_positions)
     ~colors:(Array.concat !all_colors)
 
 let () =
