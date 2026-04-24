@@ -1,4 +1,4 @@
-# cs3110project
+# MineCaml
 
 CS3110 Group Project for The Druid Cows
 
