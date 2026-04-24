@@ -11,6 +11,12 @@ type t = {
   gl_context : Sdl.gl_context;
 }
 
+(* AF: [{window; gl_context}] represents an open SDL2 window with an active
+        OpenGL 3.3 Core context. [window] is the SDL window handle and
+        [gl_context] is the OpenGL context bound to that window.
+   RI: [window] and [gl_context] are live (not yet destroyed) SDL/GL handles,
+        and [gl_context] is current on the calling thread. *)
+
 let create ~title ~w ~h =
   (* init sdl video: handles video creation and event input *)
   check "SDL init" (Sdl.init Sdl.Init.video);

@@ -5,6 +5,11 @@ type aabb = {
   max : vec3;
 }
 
+(* AF: [{min; max}] represents the axis-aligned bounding box whose corner of
+        least coordinates is [min] and whose corner of greatest coordinates is
+        [max].
+   RI: [min.x <= max.x], [min.y <= max.y], [min.z <= max.z]. *)
+
 let eye_above_feet = Config.player_height -. 0.2
 
 let at_position pos =

@@ -8,6 +8,16 @@ type t = {
   count : int; (* num vertices = 3 * num triangles *)
 }
 
+(* AF: [{vao; vertex_buffer; color_buffer; count}] represents a GPU-resident
+        mesh. [vao] is the OpenGL Vertex Array Object encoding the attribute
+        layout. [vertex_buffer] is the VBO holding [count * 3] floats of XYZ
+        position data (three floats per vertex). [color_buffer] is the VBO
+        holding [count * 3] floats of RGB color data. The mesh contains
+        [count / 3] triangles.
+   RI: [vao], [vertex_buffer], and [color_buffer] are non-zero OpenGL object
+        names that have been successfully allocated and uploaded to the GPU.
+        [count >= 0] and [count mod 3 = 0]. *)
+
 (** tells GL how to feed one VBO into a shader input slot, [location] is the
     layout location, [size] is the number of floats per vertex *)
 let bind_attribute ~buffer ~location ~size =
