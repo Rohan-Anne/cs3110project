@@ -1,5 +1,13 @@
 type t = { chunks : (int * int * int, Chunk.t) Hashtbl.t }
 
+(* AF: [{chunks}] represents the set of all loaded chunks. For each binding
+        [(cx, cy, cz) -> chunk] in the table, the chunk covers world blocks
+        with X in [cx*chunk_size, (cx+1)*chunk_size - 1], and likewise for
+        Y and Z. Any block whose chunk is absent from the table is [Air].
+   RI: For every [(cx, cy, cz) -> chunk] in [chunks],
+        [Chunk.x chunk = cx], [Chunk.y chunk = cy], [Chunk.z chunk = cz].
+        No two bindings share the same key. *)
+
 let create () = { chunks = Hashtbl.create 64 }
 let get_chunk world cx cy cz = Hashtbl.find_opt world.chunks (cx, cy, cz)
 
