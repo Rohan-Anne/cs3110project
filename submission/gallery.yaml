@@ -23,7 +23,7 @@ title: "MineCaml"
 # OK if this is a Cornell Github link, but public gallery viewers won't be able to see it.
 git-repo: "https://github.com/Rohan-Anne/MineCaml"
 # Replace the URL with your own demo video.
-demo-video-url: "https://www.youtube.com/watch?v=eSBybJGZoCU"
+demo-video-url: "https://youtu.be/kyxe6S7bBzw"
 # Write a short, attention-grabbing description of your project.
 desc: >
   MineCaml is a 3D voxel game engine, written entirely in OCaml. It creates a 
