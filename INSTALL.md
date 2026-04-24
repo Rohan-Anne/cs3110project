@@ -17,3 +17,15 @@ You also need to install SDL2.
 ## Project Dependencies
 
 Then, run `opam install . --deps-only` to install the project dependencies.
+
+## Building
+
+```sh
+dune build
+```
+
+## Running
+
+```sh
+dune exec ocaml-voxel
+```
