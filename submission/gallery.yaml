@@ -1,0 +1,37 @@
+---
+# Members of your group.
+group:
+  - name: Rohan Anne
+    netid: ra733
+  - name: Eric Shen
+    netid: ezs22
+  - name: Charlie Xue
+    netid: cx267
+  - name: Saiakhil Chilaka
+    netid: sc3484
+  - name: Eric Sun
+    netid: es2329
+
+# Your PM.
+pm:
+  name: Sonja Wong
+  netid: sw2374
+# Set to false if you don't want your gallery entry to be public.
+publish: true
+# Pithy title
+title: "(example) The Complete Caml Calculator (CCC)"
+# OK if this is a Cornell Github link, but public gallery viewers won't be able to see it.
+git-repo: "https://github.com/Rohan-Anne/cs3110project"
+# Replace the URL with your own demo video.
+demo-video-url: "https://www.youtube.com/watch?v=eSBybJGZoCU"
+# Write a short, attention-grabbing description of your project.
+desc: >
+  (example)
+  Our project is an interactive calculator. It supports standard mathematical
+  operations like addition, multiplication, negation, and division on both
+  integers and floating-point numbers. The interface is completely
+  programmable--new functions can easily be defined and assigned to new "keys"
+  in the visual interface.
+
+  Standard visual I/O is supported, but the calculator can also emit sound. By
+  pressing down a special key, it can play a fugue by J.S. Bach.
