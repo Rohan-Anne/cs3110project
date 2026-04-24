@@ -1,5 +1,4 @@
 (library
  (name ocaml_voxel)
  (wrapped false)
- (libraries tsdl tgls.tgl3)
-)
+ (libraries tsdl tgls.tgl3))
