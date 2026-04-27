@@ -32,8 +32,11 @@ let create ~title ~w ~h =
   in
   let gl_context = check "gl_create_context" (Sdl.gl_create_context window) in
   check "gl_make_current" (Sdl.gl_make_current window gl_context);
-  (* enable vsync by setting swap_interval to 1 *)
-  check "swap interval" (Sdl.gl_set_swap_interval 1);
+  (* Enable vsync when the platform supports it. Some WSLg/Mesa setups reject
+     this even after creating a valid OpenGL context. *)
+  (match Sdl.gl_set_swap_interval 1 with
+  | Ok () -> ()
+  | Error (`Msg e) -> prerr_endline ("warning: vsync disabled: " ^ e));
   (* handle window size properly, bc hidpi means window size differs *)
   let drawable_w, drawable_h = Sdl.gl_get_drawable_size window in
   Gl.viewport 0 0 drawable_w drawable_h;
