@@ -12,4 +12,6 @@
   test_camera
   test_input
   test_ocaml_voxel)
- (libraries ounit2 ocaml_voxel tsdl))
+ (libraries ounit2 qcheck-core qcheck-ounit ocaml_voxel tsdl)
+ (instrumentation
+  (backend bisect_ppx)))

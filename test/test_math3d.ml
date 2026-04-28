@@ -407,6 +407,25 @@ let test_view_translation_component _ =
   (* At yaw=pitch=0, rotation is identity, so tx at index 12 should be -1.0 *)
   assert_feq ~msg:"tx = -pos.x" (-1.0) v.(12)
 
+(* qcheck tests *)
+
+let arb_float = QCheck2.Gen.float_range (-1e6) 1e6
+
+let arb_vec3 =
+  QCheck2.Gen.(
+    map
+      (fun (x, y, z) -> Math3d.vec3 x y z)
+      (triple arb_float arb_float arb_float))
+
+(** check add is commutative *)
+let qcheck_test_add_comm =
+  QCheck2.Test.make ~name:"add_comm" ~count:1000
+    (QCheck2.Gen.pair arb_vec3 arb_vec3) (fun (a, b) ->
+      let ab = Math3d.add a b and ba = Math3d.add b a in
+      abs_float (ab.x -. ba.x) < 1e-9
+      && abs_float (ab.y -. ba.y) < 1e-9
+      && abs_float (ab.z -. ba.z) < 1e-9)
+
 let tests =
   "Math3d"
   >::: [
@@ -473,6 +492,8 @@ let tests =
          "view_yaw" >:: test_view_differs_by_yaw;
          "view_pitch" >:: test_view_differs_by_pitch;
          "view_translation" >:: test_view_translation_component;
+         (* qcheck tests *)
+         QCheck_ounit.to_ounit2_test qcheck_test_add_comm;
        ]
 
 let _ = run_test_tt_main tests

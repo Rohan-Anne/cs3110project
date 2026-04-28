@@ -34,6 +34,7 @@
               ocamlPackages.ounit2
               ocamlPackages.ppxlib
               ocamlPackages.bisect_ppx
+              ocamlPackages.qcheck
               ocamlPackages.ppx_blob
               ocamlPackages.tsdl
               ocamlPackages.tgls
