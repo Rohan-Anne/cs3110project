@@ -10,9 +10,9 @@ type game_mode =
 
 let build_world () =
   let world = World.create () in
-  for cx = -1 to 1 do
-    for cy = -1 to 1 do
-      for cz = -1 to 1 do
+  for cx = -5 to 5 do
+    for cy = -5 to 5 do
+      for cz = -5 to 5 do
         World.generate_chunk world ~cx ~cy ~cz
       done
     done
