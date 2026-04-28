@@ -1,24 +1,23 @@
 (** Tests for the {!Input} module.
 
     {1 Module Overview}
-    [Input] maintains per-frame input state: quit flag, window-resize
-    flag, accumulated mouse deltas, and a hash-table of currently-held
-    keys indexed by SDL scancode.
+    [Input] maintains per-frame input state: quit flag, window-resize flag,
+    accumulated mouse deltas, and a hash-table of currently-held keys indexed by
+    SDL scancode.
 
     {1 What is and is not testable}
-    [Input.poll] drains the SDL event queue and therefore requires a
-    running SDL context; it is exercised only during integration testing
-    of the actual game.
+    [Input.poll] drains the SDL event queue and therefore requires a running SDL
+    context; it is exercised only during integration testing of the actual game.
 
-    The remaining public API — [create] and [is_down] — makes no SDL
-    calls and can be tested freely.
+    The remaining public API — [create] and [is_down] — makes no SDL calls and
+    can be tested freely.
 
     {1 Invariants}
     {2 [create]}
     - [quit = false], [resized = false] on a fresh value.
     - [mouse_dx = 0.0], [mouse_dy = 0.0] on a fresh value.
-    - [is_down inp sc = false] for every scancode on a fresh value
-      (the hash-table is empty).
+    - [is_down inp sc = false] for every scancode on a fresh value (the
+      hash-table is empty).
 
     {2 [is_down]}
     - Returns [false] when the scancode is absent from the table.
@@ -75,13 +74,19 @@ let test_is_down_fresh_escape _ =
 let test_is_down_fresh_arbitrary _ =
   let inp = Input.create () in
   (* Check a representative sample of scancodes. *)
-  let keys = [
-    Sdl.Scancode.a; Sdl.Scancode.s; Sdl.Scancode.d;
-    Sdl.Scancode.lctrl; Sdl.Scancode.lshift;
-  ] in
-  List.iter (fun sc ->
-    assert_bool "key not down on fresh input" (not (Input.is_down inp sc))
-  ) keys
+  let keys =
+    [
+      Sdl.Scancode.a;
+      Sdl.Scancode.s;
+      Sdl.Scancode.d;
+      Sdl.Scancode.lctrl;
+      Sdl.Scancode.lshift;
+    ]
+  in
+  List.iter
+    (fun sc ->
+      assert_bool "key not down on fresh input" (not (Input.is_down inp sc)))
+    keys
 
 (* ------------------------------------------------------------------ *)
 (*  {1 is_down — after manual key insertion}                            *)
@@ -110,9 +115,9 @@ let test_is_down_no_aliasing _ =
 (** Multiple keys can be held simultaneously. *)
 let test_is_down_multiple_keys _ =
   let inp = Input.create () in
-  Hashtbl.replace inp.keys_down Sdl.Scancode.w     true;
+  Hashtbl.replace inp.keys_down Sdl.Scancode.w true;
   Hashtbl.replace inp.keys_down Sdl.Scancode.lctrl true;
-  assert_bool "W down"    (Input.is_down inp Sdl.Scancode.w);
+  assert_bool "W down" (Input.is_down inp Sdl.Scancode.w);
   assert_bool "Ctrl down" (Input.is_down inp Sdl.Scancode.lctrl)
 
 (** Re-inserting the same key as true keeps it true. *)
@@ -133,23 +138,23 @@ let test_is_down_release_after_press _ =
 let tests =
   "Input"
   >::: [
-    (* create *)
-    "quit_false"          >:: test_create_quit_false;
-    "resized_false"       >:: test_create_resized_false;
-    "mouse_dx_zero"       >:: test_create_mouse_dx_zero;
-    "mouse_dy_zero"       >:: test_create_mouse_dy_zero;
-    (* is_down on fresh state *)
-    "is_down_w_fresh"     >:: test_is_down_fresh_w;
-    "is_down_space_fresh" >:: test_is_down_fresh_space;
-    "is_down_esc_fresh"   >:: test_is_down_fresh_escape;
-    "is_down_sample"      >:: test_is_down_fresh_arbitrary;
-    (* is_down after mutation *)
-    "is_down_set_true"    >:: test_is_down_after_set_true;
-    "is_down_set_false"   >:: test_is_down_after_set_false;
-    "is_down_no_alias"    >:: test_is_down_no_aliasing;
-    "is_down_multi"       >:: test_is_down_multiple_keys;
-    "is_down_idempotent"  >:: test_is_down_idempotent_true;
-    "is_down_release"     >:: test_is_down_release_after_press;
-  ]
+         (* create *)
+         "quit_false" >:: test_create_quit_false;
+         "resized_false" >:: test_create_resized_false;
+         "mouse_dx_zero" >:: test_create_mouse_dx_zero;
+         "mouse_dy_zero" >:: test_create_mouse_dy_zero;
+         (* is_down on fresh state *)
+         "is_down_w_fresh" >:: test_is_down_fresh_w;
+         "is_down_space_fresh" >:: test_is_down_fresh_space;
+         "is_down_esc_fresh" >:: test_is_down_fresh_escape;
+         "is_down_sample" >:: test_is_down_fresh_arbitrary;
+         (* is_down after mutation *)
+         "is_down_set_true" >:: test_is_down_after_set_true;
+         "is_down_set_false" >:: test_is_down_after_set_false;
+         "is_down_no_alias" >:: test_is_down_no_aliasing;
+         "is_down_multi" >:: test_is_down_multiple_keys;
+         "is_down_idempotent" >:: test_is_down_idempotent_true;
+         "is_down_release" >:: test_is_down_release_after_press;
+       ]
 
 let _ = run_test_tt_main tests

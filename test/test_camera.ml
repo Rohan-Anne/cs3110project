@@ -1,10 +1,10 @@
 (** Tests for the {!Camera} module.
 
     {1 Module Overview}
-    [Camera] represents a first-person camera in the 3-D world.  It stores
-    a mutable position, yaw (horizontal rotation), and pitch (vertical
-    rotation).  From these it computes a view matrix and converts keyboard /
-    mouse input into movement vectors.
+    [Camera] represents a first-person camera in the 3-D world. It stores a
+    mutable position, yaw (horizontal rotation), and pitch (vertical rotation).
+    From these it computes a view matrix and converts keyboard / mouse input
+    into movement vectors.
 
     {1 Invariants}
     {2 [create]}
@@ -29,12 +29,12 @@
     - With W pressed and yaw = 0, movement points in the -Z direction.
     - With D pressed and yaw = 0, movement points in the +X direction.
     - Sprint speed applies when Ctrl is held.
-    - The returned vector has length ≤ speed × dt (normalised before
-      scaling, so diagonal movement is not faster).
+    - The returned vector has length ≤ speed × dt (normalised before scaling, so
+      diagonal movement is not faster).
 
     {2 [ground_movement_from_input]}
-    - Like [movement_from_input] but the y-component of the result is
-      always 0 (vertical velocity handled separately in survival mode).
+    - Like [movement_from_input] but the y-component of the result is always 0
+      (vertical velocity handled separately in survival mode).
 
     {2 [view]}
     - Returns a 16-element float array.
@@ -158,10 +158,10 @@ let test_pitch_clamp_upper _ =
 let test_pitch_clamp_lower _ =
   let c = make_cam () in
   Camera.apply_mouse_look c ~dx:0.0 ~dy:1000.0 ~sensitivity:1.0;
-  assert_bool "pitch ≥ -pitch_limit" (c.pitch >= -. Config.pitch_limit)
+  assert_bool "pitch ≥ -pitch_limit" (c.pitch >= -.Config.pitch_limit)
 
-(** Already at the limit — another push in the same direction keeps it
-    clamped rather than exceeding it. *)
+(** Already at the limit — another push in the same direction keeps it clamped
+    rather than exceeding it. *)
 let test_pitch_stays_clamped _ =
   let c = make_cam ~pitch:Config.pitch_limit () in
   Camera.apply_mouse_look c ~dx:0.0 ~dy:(-100.0) ~sensitivity:1.0;
@@ -173,14 +173,18 @@ let test_pitch_stays_clamped _ =
 
 let test_movement_no_keys _ =
   let c = make_cam () in
-  let m = Camera.movement_from_input c (no_keys ())
-            ~move_speed:4.0 ~sprint_speed:8.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c (no_keys ()) ~move_speed:4.0 ~sprint_speed:8.0
+      ~dt:1.0
+  in
   assert_v3 ~msg:"no-key movement" (0.0, 0.0, 0.0) m
 
 let test_ground_movement_no_keys _ =
   let c = make_cam () in
-  let m = Camera.ground_movement_from_input c (no_keys ())
-            ~move_speed:4.0 ~sprint_speed:8.0 ~dt:1.0 in
+  let m =
+    Camera.ground_movement_from_input c (no_keys ()) ~move_speed:4.0
+      ~sprint_speed:8.0 ~dt:1.0
+  in
   assert_v3 ~msg:"no-key ground" (0.0, 0.0, 0.0) m
 
 (* ------------------------------------------------------------------ *)
@@ -194,17 +198,23 @@ let test_ground_movement_no_keys _ =
 (** W key at yaw = 0: movement should be (0, 0, -speed*dt). *)
 let test_movement_w_key _ =
   let c = make_cam ~yaw:0.0 () in
-  let m = Camera.movement_from_input c (input_with_key Sdl.Scancode.w)
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
-  assert_feq ~msg:"W dx = 0"  0.0  m.x;
-  assert_feq ~msg:"W dy = 0"  0.0  m.y;
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.w)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
+  assert_feq ~msg:"W dx = 0" 0.0 m.x;
+  assert_feq ~msg:"W dy = 0" 0.0 m.y;
   assert_feq ~msg:"W dz = -1" (-1.0) m.z
 
 (** D key at yaw = 0: movement should be (speed*dt, 0, 0). *)
 let test_movement_d_key _ =
   let c = make_cam ~yaw:0.0 () in
-  let m = Camera.movement_from_input c (input_with_key Sdl.Scancode.d)
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.d)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   assert_feq ~msg:"D dx = 1" 1.0 m.x;
   assert_feq ~msg:"D dy = 0" 0.0 m.y;
   assert_feq ~msg:"D dz = 0" 0.0 m.z
@@ -212,17 +222,23 @@ let test_movement_d_key _ =
 (** A key at yaw = 0: movement should be (-speed*dt, 0, 0). *)
 let test_movement_a_key _ =
   let c = make_cam ~yaw:0.0 () in
-  let m = Camera.movement_from_input c (input_with_key Sdl.Scancode.a)
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.a)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   assert_feq ~msg:"A dx = -1" (-1.0) m.x;
-  assert_feq ~msg:"A dy = 0"  0.0    m.y;
-  assert_feq ~msg:"A dz = 0"  0.0    m.z
+  assert_feq ~msg:"A dy = 0" 0.0 m.y;
+  assert_feq ~msg:"A dz = 0" 0.0 m.z
 
 (** Space key: movement should be (0, speed*dt, 0) in creative mode. *)
 let test_movement_space_key _ =
   let c = make_cam () in
-  let m = Camera.movement_from_input c (input_with_key Sdl.Scancode.space)
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.space)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   assert_feq ~msg:"Space dy = 1" 1.0 m.y
 
 (** Ctrl (sprint) doubles speed. *)
@@ -230,18 +246,20 @@ let test_movement_sprint _ =
   let c = make_cam ~yaw:0.0 () in
   let inp = input_with_key Sdl.Scancode.w in
   Hashtbl.replace inp.keys_down Sdl.Scancode.lctrl true;
-  let m = Camera.movement_from_input c inp
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c inp ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   assert_feq ~msg:"sprint dz = -2" (-2.0) m.z
 
-(** Diagonal movement (W + D) has the same speed as cardinal movement —
-    the direction vector is normalised before scaling. *)
+(** Diagonal movement (W + D) has the same speed as cardinal movement — the
+    direction vector is normalised before scaling. *)
 let test_movement_diagonal_normalized _ =
   let c = make_cam ~yaw:0.0 () in
   let inp = input_with_key Sdl.Scancode.w in
   Hashtbl.replace inp.keys_down Sdl.Scancode.d true;
-  let m = Camera.movement_from_input c inp
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.movement_from_input c inp ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   let len = Math3d.length m in
   assert_feq ~eps:1e-4 ~msg:"diagonal length = 1" 1.0 len
 
@@ -252,16 +270,21 @@ let test_movement_diagonal_normalized _ =
 let test_ground_movement_y_zero _ =
   let c = make_cam () in
   let inp = input_with_key Sdl.Scancode.w in
-  let m = Camera.ground_movement_from_input c inp
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.ground_movement_from_input c inp ~move_speed:1.0 ~sprint_speed:2.0
+      ~dt:1.0
+  in
   assert_feq ~msg:"ground y = 0" 0.0 m.y
 
 let test_ground_movement_w _ =
   let c = make_cam ~yaw:0.0 () in
-  let m = Camera.ground_movement_from_input c (input_with_key Sdl.Scancode.w)
-            ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0 in
+  let m =
+    Camera.ground_movement_from_input c
+      (input_with_key Sdl.Scancode.w)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
   assert_feq ~msg:"ground W dz = -1" (-1.0) m.z;
-  assert_feq ~msg:"ground W dy = 0"  0.0    m.y
+  assert_feq ~msg:"ground W dy = 0" 0.0 m.y
 
 (* ------------------------------------------------------------------ *)
 (*  {1 view}                                                            *)
@@ -299,42 +322,42 @@ let test_view_deterministic _ =
 let tests =
   "Camera"
   >::: [
-    (* create *)
-    "create_pos"               >:: test_create_pos;
-    "create_yaw"               >:: test_create_yaw;
-    "create_pitch"             >:: test_create_pitch;
-    "create_zero"              >:: test_create_zero;
-    (* apply_mouse_look *)
-    "mouse_yaw_changes"        >:: test_mouse_yaw_changes;
-    "mouse_pitch_changes"      >:: test_mouse_pitch_changes;
-    "mouse_zero_no_change"     >:: test_mouse_zero_no_change;
-    "mouse_yaw_direction"      >:: test_mouse_yaw_direction;
-    "mouse_pitch_direction"    >:: test_mouse_pitch_direction;
-    "yaw_accumulates"          >:: test_yaw_accumulates;
-    "sensitivity_scales"       >:: test_sensitivity_scales_yaw;
-    (* pitch clamp *)
-    "pitch_clamp_upper"        >:: test_pitch_clamp_upper;
-    "pitch_clamp_lower"        >:: test_pitch_clamp_lower;
-    "pitch_stays_clamped"      >:: test_pitch_stays_clamped;
-    (* movement — no keys *)
-    "movement_no_keys"         >:: test_movement_no_keys;
-    "ground_no_keys"           >:: test_ground_movement_no_keys;
-    (* movement — directional *)
-    "movement_w"               >:: test_movement_w_key;
-    "movement_d"               >:: test_movement_d_key;
-    "movement_a"               >:: test_movement_a_key;
-    "movement_space"           >:: test_movement_space_key;
-    "movement_sprint"          >:: test_movement_sprint;
-    "movement_diagonal"        >:: test_movement_diagonal_normalized;
-    (* ground movement *)
-    "ground_y_zero"            >:: test_ground_movement_y_zero;
-    "ground_w"                 >:: test_ground_movement_w;
-    (* view *)
-    "view_length"              >:: test_view_length;
-    "view_yaw"                 >:: test_view_differs_by_yaw;
-    "view_pitch"               >:: test_view_differs_by_pitch;
-    "view_pos"                 >:: test_view_differs_by_pos;
-    "view_deterministic"       >:: test_view_deterministic;
-  ]
+         (* create *)
+         "create_pos" >:: test_create_pos;
+         "create_yaw" >:: test_create_yaw;
+         "create_pitch" >:: test_create_pitch;
+         "create_zero" >:: test_create_zero;
+         (* apply_mouse_look *)
+         "mouse_yaw_changes" >:: test_mouse_yaw_changes;
+         "mouse_pitch_changes" >:: test_mouse_pitch_changes;
+         "mouse_zero_no_change" >:: test_mouse_zero_no_change;
+         "mouse_yaw_direction" >:: test_mouse_yaw_direction;
+         "mouse_pitch_direction" >:: test_mouse_pitch_direction;
+         "yaw_accumulates" >:: test_yaw_accumulates;
+         "sensitivity_scales" >:: test_sensitivity_scales_yaw;
+         (* pitch clamp *)
+         "pitch_clamp_upper" >:: test_pitch_clamp_upper;
+         "pitch_clamp_lower" >:: test_pitch_clamp_lower;
+         "pitch_stays_clamped" >:: test_pitch_stays_clamped;
+         (* movement — no keys *)
+         "movement_no_keys" >:: test_movement_no_keys;
+         "ground_no_keys" >:: test_ground_movement_no_keys;
+         (* movement — directional *)
+         "movement_w" >:: test_movement_w_key;
+         "movement_d" >:: test_movement_d_key;
+         "movement_a" >:: test_movement_a_key;
+         "movement_space" >:: test_movement_space_key;
+         "movement_sprint" >:: test_movement_sprint;
+         "movement_diagonal" >:: test_movement_diagonal_normalized;
+         (* ground movement *)
+         "ground_y_zero" >:: test_ground_movement_y_zero;
+         "ground_w" >:: test_ground_movement_w;
+         (* view *)
+         "view_length" >:: test_view_length;
+         "view_yaw" >:: test_view_differs_by_yaw;
+         "view_pitch" >:: test_view_differs_by_pitch;
+         "view_pos" >:: test_view_differs_by_pos;
+         "view_deterministic" >:: test_view_deterministic;
+       ]
 
 let _ = run_test_tt_main tests
