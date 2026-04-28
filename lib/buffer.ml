@@ -17,24 +17,29 @@ let bind_attribute ~buffer ~location ~size =
 
 let create ~positions ~colors =
   let vao = Gl_utils.get_int (Gl.gen_vertex_arrays 1) in
+  Gl_utils.check_nonzero "gen_vertex_arrays" vao;
   let vertex_data = Gl_utils.float32_array positions in
   let color_data = Gl_utils.float32_array colors in
   (* alloc, bind, and upload position data *)
   let vertex_buffer =
     let id = Gl_utils.get_int (Gl.gen_buffers 1) in
+    Gl_utils.check_nonzero "gen_buffers (vertex)" id;
     Gl.bind_buffer Gl.array_buffer id;
     Gl.buffer_data Gl.array_buffer
       (Gl.bigarray_byte_size vertex_data)
       (Some vertex_data) Gl.static_draw;
+    Gl_utils.gl_check "buffer_data (vertex)";
     id
   in
   (* same for color data *)
   let color_buffer =
     let id = Gl_utils.get_int (Gl.gen_buffers 1) in
+    Gl_utils.check_nonzero "gen_buffers (color)" id;
     Gl.bind_buffer Gl.array_buffer id;
     Gl.buffer_data Gl.array_buffer
       (Gl.bigarray_byte_size color_data)
       (Some color_data) Gl.static_draw;
+    Gl_utils.gl_check "buffer_data (color)";
     id
   in
   (* bind the vao *)

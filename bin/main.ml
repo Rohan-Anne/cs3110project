@@ -11,7 +11,8 @@ type game_mode =
 let build_world () =
   let world = World.create () in
   for cx = -5 to 5 do
-    for cy = -5 to 5 do
+    for cy = -2 to 1 do
+      (* y is smaller *)
       for cz = -5 to 5 do
         World.generate_chunk world ~cx ~cy ~cz
       done
@@ -19,16 +20,22 @@ let build_world () =
   done;
   world
 
-let build_world_buffer world =
-  let all_positions = ref [] in
-  let all_colors = ref [] in
+let build_chunk_buffers world =
+  let cs = Config.chunk_size in
+  let max_floats = cs * cs * cs * 6 * 6 * 3 in
+  let pos_scratch = Array.create_float max_floats in
+  let col_scratch = Array.create_float max_floats in
+  let tbl : (int * int * int, Buffer.t) Hashtbl.t = Hashtbl.create 64 in
   World.iter world (fun chunk ->
-      let positions, colors = World.mesh_chunk world chunk in
-      all_positions := positions :: !all_positions;
-      all_colors := colors :: !all_colors);
-  Buffer.create
-    ~positions:(Array.concat !all_positions)
-    ~colors:(Array.concat !all_colors)
+      let n = World.mesh_into world chunk pos_scratch col_scratch in
+      if n > 0 then begin
+        let key = (Chunk.x chunk, Chunk.y chunk, Chunk.z chunk) in
+        Hashtbl.add tbl key
+          (Buffer.create
+             ~positions:(Array.sub pos_scratch 0 n)
+             ~colors:(Array.sub col_scratch 0 n))
+      end);
+  tbl
 
 let () =
   let win = Window.create ~title:"ocaml-voxel" ~w:800 ~h:600 in
@@ -37,14 +44,16 @@ let () =
       ~fragment_source:fragment_shader_source
   in
   let world = build_world () in
-  let buf = build_world_buffer world in
+  let chunk_bufs = build_chunk_buffers world in
   Gl.enable Gl.depth_test;
   let input = Input.create () in
   (* spawn above the center of the chunk *)
   let camera =
     Camera.create ~pos:(Math3d.vec3 8.0 10.0 8.0) ~yaw:0.0 ~pitch:(-0.3)
   in
-  ignore (Sdl.set_relative_mouse_mode true);
+  (match Sdl.set_relative_mouse_mode true with
+  | Ok () -> ()
+  | Error (`Msg e) -> prerr_endline ("warning: relative mouse mode failed: " ^ e));
   let mode = ref Survival in
   let vel_y = ref 0.0 in
   let on_ground = ref false in
@@ -105,7 +114,7 @@ let () =
         camera.pos <- Math3d.add camera.pos actual);
     prev_space := space_now;
     let w, h = Sdl.gl_get_drawable_size win.window in
-    let aspect = float_of_int w /. float_of_int h in
+    let aspect = float_of_int w /. float_of_int (max 1 h) in
     let proj =
       Math3d.perspective ~fov_y_radians:Config.fov_y ~aspect ~near:Config.near
         ~far:Config.far
@@ -114,9 +123,9 @@ let () =
     Gl.clear Gl.(color_buffer_bit lor depth_buffer_bit);
     Shader.use shader;
     Shader.set_uniform_mat4 shader "mvp" mvp;
-    Buffer.draw buf;
+    Hashtbl.iter (fun _ buf -> Buffer.draw buf) chunk_bufs;
     Window.swap win
   done;
-  Buffer.destroy buf;
+  Hashtbl.iter (fun _ buf -> Buffer.destroy buf) chunk_bufs;
   Shader.destroy shader;
   Window.destroy win

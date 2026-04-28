@@ -36,82 +36,103 @@ let block_color = function
   | Block.Stone -> Color.make 0.45 0.45 0.5
   | Block.Air -> Color.make 0. 0. 0.
 
-let add_face positions colors c (ax, ay, az) (bx, by, bz) (cx, cy, cz)
-    (dx, dy, dz) =
-  let r, g, b = Color.to_tuple c in
-  let v x y z =
-    positions := [| x; y; z |] :: !positions;
-    colors := [| r; g; b |] :: !colors
+(* writes faces for [chunk] into [pos_buf]/[col_buf] starting at index 0,
+   returns the number of floats written *)
+let mesh_into world chunk pos_buf col_buf =
+  let cs = Config.chunk_size in
+  let n = ref 0 in
+  let wx = Chunk.x chunk * cs in
+  let wy = Chunk.y chunk * cs in
+  let wz = Chunk.z chunk * cs in
+  let write x y z r g b =
+    let i = !n in
+    pos_buf.(i) <- x;
+    pos_buf.(i + 1) <- y;
+    pos_buf.(i + 2) <- z;
+    col_buf.(i) <- r;
+    col_buf.(i + 1) <- g;
+    col_buf.(i + 2) <- b;
+    n := i + 3
   in
-  v ax ay az;
-  v bx by bz;
-  v cx cy cz;
-  v ax ay az;
-  v cx cy cz;
-  v dx dy dz
-
-let mesh_chunk world chunk =
-  let positions = ref [] in
-  let colors = ref [] in
-  let wx = Chunk.x chunk * Config.chunk_size in
-  let wy = Chunk.y chunk * Config.chunk_size in
-  let wz = Chunk.z chunk * Config.chunk_size in
-  for bx = 0 to Config.chunk_size - 1 do
-    for by = 0 to Config.chunk_size - 1 do
-      for bz = 0 to Config.chunk_size - 1 do
+  let add_face c (ax, ay, az) (bx, by, bz) (cx, cy, cz) (dx, dy, dz) =
+    let r, g, b = Color.to_tuple c in
+    write ax ay az r g b;
+    write bx by bz r g b;
+    write cx cy cz r g b;
+    write ax ay az r g b;
+    write cx cy cz r g b;
+    write dx dy dz r g b
+  in
+  (* use direct chunk access for intra-chunk neighbors, hashtable only at
+     edges *)
+  let air_at bx by bz =
+    if bx >= 0 && bx < cs && by >= 0 && by < cs && bz >= 0 && bz < cs then
+      Chunk.get chunk bx by bz = Block.Air
+    else get_block world (wx + bx) (wy + by) (wz + bz) = Block.Air
+  in
+  for bx = 0 to cs - 1 do
+    for by = 0 to cs - 1 do
+      for bz = 0 to cs - 1 do
         let block = Chunk.get chunk bx by bz in
-        if block <> Block.Air then (
-          let x = wx + bx in
-          let y = wy + by in
-          let z = wz + bz in
-          let fx = float x in
-          let fy = float y in
-          let fz = float z in
+        if block <> Block.Air then begin
+          let fx = float (wx + bx) in
+          let fy = float (wy + by) in
+          let fz = float (wz + bz) in
           let c = block_color block in
           (* positive x face *)
-          if get_block world (x + 1) y z = Block.Air then
-            add_face positions colors (Color.shade 0.6 c)
+          if air_at (bx + 1) by bz then
+            add_face (Color.shade 0.6 c)
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx +. 1., fy, fz +. 1.);
           (* negative x face *)
-          if get_block world (x - 1) y z = Block.Air then
-            add_face positions colors (Color.shade 0.7 c)
+          if air_at (bx - 1) by bz then
+            add_face (Color.shade 0.7 c)
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz)
               (fx, fy, fz);
           (* positive y face (top) *)
-          if get_block world x (y + 1) z = Block.Air then
-            add_face positions colors c
+          if air_at bx (by + 1) bz then
+            add_face c
               (fx, fy +. 1., fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz +. 1.);
           (* negative y face (bottom) *)
-          if get_block world x (y - 1) z = Block.Air then
-            add_face positions colors (Color.shade 0.5 c)
+          if air_at bx (by - 1) bz then
+            add_face (Color.shade 0.5 c)
               (fx, fy, fz +. 1.)
               (fx +. 1., fy, fz +. 1.)
               (fx +. 1., fy, fz)
               (fx, fy, fz);
           (* positive z face *)
-          if get_block world x y (z + 1) = Block.Air then
-            add_face positions colors (Color.shade 0.9 c)
+          if air_at bx by (bz + 1) then
+            add_face (Color.shade 0.9 c)
               (fx +. 1., fy, fz +. 1.)
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx +. 1., fy +. 1., fz +. 1.);
           (* negative z face *)
-          if get_block world x y (z - 1) = Block.Air then
-            add_face positions colors (Color.shade 0.8 c) (fx, fy, fz)
+          if air_at bx by (bz - 1) then
+            add_face (Color.shade 0.8 c) (fx, fy, fz)
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
-              (fx, fy +. 1., fz))
+              (fx, fy +. 1., fz)
+        end
       done
     done
   done;
-  (Array.concat (List.rev !positions), Array.concat (List.rev !colors))
+  !n
+
+let mesh_chunk world chunk =
+  let cs = Config.chunk_size in
+  (* worst case: every block solid with every face exposed *)
+  let max_floats = cs * cs * cs * 6 * 6 * 3 in
+  let pos_buf = Array.create_float max_floats in
+  let col_buf = Array.create_float max_floats in
+  let used = mesh_into world chunk pos_buf col_buf in
+  (Array.sub pos_buf 0 used, Array.sub col_buf 0 used)
 
 let iter world f = Hashtbl.iter (fun _ c -> f c) world.chunks
