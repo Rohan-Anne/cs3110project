@@ -1,3 +1,15 @@
-(test
- (name test_ocaml_voxel)
- (libraries ounit2 ocaml_voxel))
+(tests
+ (names
+  test_block
+  test_config
+  test_chunk
+  test_color
+  test_math3d
+  test_noise
+  test_terrain
+  test_world
+  test_physics
+  test_camera
+  test_input
+  test_ocaml_voxel)
+ (libraries ounit2 ocaml_voxel tsdl))
