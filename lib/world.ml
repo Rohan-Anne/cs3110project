@@ -34,7 +34,7 @@ let block_color = function
   | Block.Grass -> Color.make 0.2 0.6 0.1
   | Block.Dirt -> Color.make 0.55 0.35 0.15
   | Block.Stone -> Color.make 0.45 0.45 0.5
-  | Block.Air -> Color.make 0. 0. 0.
+  | Block.Air -> assert false
 
 (* writes faces for [chunk] into [pos_buf]/[col_buf] starting at index 0,
    returns the number of floats written *)
@@ -75,9 +75,9 @@ let mesh_into world chunk pos_buf col_buf =
       for bz = 0 to cs - 1 do
         let block = Chunk.get chunk bx by bz in
         if block <> Block.Air then begin
-          let fx = float (wx + bx) in
-          let fy = float (wy + by) in
-          let fz = float (wz + bz) in
+          let fx = Float.of_int (wx + bx) in
+          let fy = Float.of_int (wy + by) in
+          let fz = Float.of_int (wz + bz) in
           let c = block_color block in
           (* positive x face *)
           if air_at (bx + 1) by bz then

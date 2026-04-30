@@ -24,7 +24,7 @@ let get_string len fill =
 
 let float32_array values =
   let data = bigarray_create Bigarray.float32 (Array.length values) in
-  Array.iteri (Bigarray.Array1.set data) values;
+  Array.iteri (fun i v -> data.{i} <- v) values;
   data
 
 let shader_status shader param = get_int (Gl.get_shaderiv shader param)

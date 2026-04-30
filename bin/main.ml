@@ -114,7 +114,7 @@ let () =
         camera.pos <- Math3d.add camera.pos actual);
     prev_space := space_now;
     let w, h = Sdl.gl_get_drawable_size win.window in
-    let aspect = float_of_int w /. float_of_int (max 1 h) in
+    let aspect = Float.of_int w /. Float.of_int (max 1 h) in
     let proj =
       Math3d.perspective ~fov_y_radians:Config.fov_y ~aspect ~near:Config.near
         ~far:Config.far

@@ -48,9 +48,9 @@ let poll input =
     (* on mouse movement *)
     | `Mouse_motion ->
         input.mouse_dx <-
-          input.mouse_dx +. float_of_int Sdl.Event.(get e mouse_motion_xrel);
+          input.mouse_dx +. Float.of_int Sdl.Event.(get e mouse_motion_xrel);
         input.mouse_dy <-
-          input.mouse_dy +. float_of_int Sdl.Event.(get e mouse_motion_yrel)
+          input.mouse_dy +. Float.of_int Sdl.Event.(get e mouse_motion_yrel)
     (* on window resize event *)
     | `Window_event
       when Sdl.Event.(get e window_event_id)

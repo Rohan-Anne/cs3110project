@@ -31,8 +31,8 @@ let grad hash x z =
   | _ -> -.x -. z
 
 let perlin2d x z =
-  let xi = int_of_float (floor x) land 255 in
-  let zi = int_of_float (floor z) land 255 in
+  let xi = Float.to_int (floor x) land 255 in
+  let zi = Float.to_int (floor z) land 255 in
   let xf = x -. floor x in
   let zf = z -. floor z in
   (* Fade curves *)
