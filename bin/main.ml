@@ -174,7 +174,8 @@ let update_chunks world chunk_bufs worker ~camera ~scratch_pos ~scratch_col =
   World.iter world (fun chunk ->
       let cx = Chunk.x chunk and cy = Chunk.y chunk and cz = Chunk.z chunk in
       let dx = cx - player_cx and dz = cz - player_cz in
-      if abs dx > rd || abs dz > rd then to_unload := (cx, cy, cz) :: !to_unload);
+      if (dx * dx) + (dz * dz) > (rd + 2) * (rd + 2) then
+        to_unload := (cx, cy, cz) :: !to_unload);
   List.iter
     (fun (cx, cy, cz) ->
       (match Hashtbl.find_opt chunk_bufs (cx, cy, cz) with
