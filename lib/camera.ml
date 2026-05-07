@@ -17,7 +17,7 @@ type t = {
 let create ~pos ~yaw ~pitch = { pos; yaw; pitch }
 
 let apply_mouse_look t ~dx ~dy ~sensitivity =
-  t.yaw <- t.yaw -. (dx *. sensitivity);
+  t.yaw <- mod_float (t.yaw -. (dx *. sensitivity)) (2.0 *. Float.pi);
   t.pitch <- t.pitch -. (dy *. sensitivity);
   t.pitch <-
     Float.max (-.Config.pitch_limit) (Float.min Config.pitch_limit t.pitch)
