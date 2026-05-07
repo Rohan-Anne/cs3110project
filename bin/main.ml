@@ -91,19 +91,10 @@ type game_mode =
   | Creative
   | Survival
 
-let build_world () =
-  let world = World.create () in
-  for cx = -5 to 5 do
-    for cy = -2 to 1 do
-      (* y is smaller *)
-      for cz = -5 to 5 do
-        World.generate_chunk world ~cx ~cy ~cz
-      done
-    done
-  done;
-  world
-
-let rebuild_chunk world chunk_bufs cx cy cz =
+(* mesh chunk [(cx, cy, cz)] using shared [scratch_pos]/[scratch_col] arrays,
+   destroy the prior GPU buffer if any, and upload the new one. If the chunk
+   has no visible faces, leaves [chunk_bufs] without an entry. *)
+let remesh_chunk world chunk_bufs ~scratch_pos ~scratch_col cx cy cz =
   let key = (cx, cy, cz) in
   (match Hashtbl.find_opt chunk_bufs key with
   | Some buf ->
@@ -113,19 +104,17 @@ let rebuild_chunk world chunk_bufs cx cy cz =
   match World.get_chunk world cx cy cz with
   | None -> ()
   | Some chunk ->
-      let cs = Config.chunk_size in
-      let max_floats = cs * cs * cs * 6 * 6 * 3 in
-      let pos_buf = Array.create_float max_floats in
-      let col_buf = Array.create_float max_floats in
-      let n = World.mesh_into world chunk pos_buf col_buf in
+      let n = World.mesh_into world chunk scratch_pos scratch_col in
       if n > 0 then
         Hashtbl.replace chunk_bufs key
-          (Buffer.create ~positions:(Array.sub pos_buf 0 n)
-             ~colors:(Array.sub col_buf 0 n))
+          (Buffer.create
+             ~positions:(Array.sub scratch_pos 0 n)
+             ~colors:(Array.sub scratch_col 0 n))
 
 (* Remesh the chunk containing (wx,wy,wz) and any adjacent chunks whose face
    visibility may be affected by a block on the chunk boundary. *)
-let rebuild_affected_chunks world chunk_bufs wx wy wz =
+let rebuild_affected_chunks world chunk_bufs ~scratch_pos ~scratch_col wx wy wz
+    =
   let cs = Config.chunk_size in
   let coord_to_chunk x =
     let local = ((x mod cs) + cs) mod cs in
@@ -134,30 +123,124 @@ let rebuild_affected_chunks world chunk_bufs wx wy wz =
   let cx, lx = coord_to_chunk wx in
   let cy, ly = coord_to_chunk wy in
   let cz, lz = coord_to_chunk wz in
-  rebuild_chunk world chunk_bufs cx cy cz;
-  if lx = 0 then rebuild_chunk world chunk_bufs (cx - 1) cy cz;
-  if lx = cs - 1 then rebuild_chunk world chunk_bufs (cx + 1) cy cz;
-  if ly = 0 then rebuild_chunk world chunk_bufs cx (cy - 1) cz;
-  if ly = cs - 1 then rebuild_chunk world chunk_bufs cx (cy + 1) cz;
-  if lz = 0 then rebuild_chunk world chunk_bufs cx cy (cz - 1);
-  if lz = cs - 1 then rebuild_chunk world chunk_bufs cx cy (cz + 1)
+  let mesh = remesh_chunk world chunk_bufs ~scratch_pos ~scratch_col in
+  mesh cx cy cz;
+  if lx = 0 then mesh (cx - 1) cy cz;
+  if lx = cs - 1 then mesh (cx + 1) cy cz;
+  if ly = 0 then mesh cx (cy - 1) cz;
+  if ly = cs - 1 then mesh cx (cy + 1) cz;
+  if lz = 0 then mesh cx cy (cz - 1);
+  if lz = cs - 1 then mesh cx cy (cz + 1)
 
-let build_chunk_buffers world =
+let neighbours cx cy cz =
+  [
+    (cx - 1, cy, cz);
+    (cx + 1, cy, cz);
+    (cx, cy - 1, cz);
+    (cx, cy + 1, cz);
+    (cx, cy, cz - 1);
+    (cx, cy, cz + 1);
+  ]
+
+(* Apply one finished chunk-generation result: install the new chunk into
+   the world, mesh it, and remesh any already-loaded neighbours whose
+   boundary faces may have changed. *)
+let apply_chunk_result world chunk_bufs ~scratch_pos ~scratch_col
+    (cx, cy, cz) blocks =
+  let chunk = Chunk.create ~x:cx ~y:cy ~z:cz ~blocks in
+  World.add_chunk world chunk;
+  let mesh = remesh_chunk world chunk_bufs ~scratch_pos ~scratch_col in
+  mesh cx cy cz;
+  List.iter
+    (fun (ncx, ncy, ncz) ->
+      if World.get_chunk world ncx ncy ncz <> None then mesh ncx ncy ncz)
+    (neighbours cx cy cz)
+
+(* Stream chunks around the player. Each frame:
+   1. Unload chunks outside the horizontal render distance and remesh their
+      still-loaded neighbours.
+   2. Drain up to [Config.chunk_load_budget] finished results from the
+      worker, applying each one (or dropping it if the player has since
+      moved out of range).
+   3. Scan for missing chunks inside the render radius and request the
+      worker to generate them, in order of distance (closest first). *)
+let update_chunks world chunk_bufs worker ~camera ~scratch_pos ~scratch_col =
   let cs = Config.chunk_size in
-  let max_floats = cs * cs * cs * 6 * 6 * 3 in
-  let pos_scratch = Array.create_float max_floats in
-  let col_scratch = Array.create_float max_floats in
-  let tbl : (int * int * int, Buffer.t) Hashtbl.t = Hashtbl.create 64 in
+  let cs_f = Float.of_int cs in
+  let rd = Config.render_distance in
+  let player_cx =
+    Float.to_int (Float.floor (camera.Camera.pos.x /. cs_f))
+  in
+  let player_cz =
+    Float.to_int (Float.floor (camera.Camera.pos.z /. cs_f))
+  in
+  let mesh = remesh_chunk world chunk_bufs ~scratch_pos ~scratch_col in
+  (* 1. unload *)
+  let to_unload = ref [] in
   World.iter world (fun chunk ->
-      let n = World.mesh_into world chunk pos_scratch col_scratch in
-      if n > 0 then begin
-        let key = (Chunk.x chunk, Chunk.y chunk, Chunk.z chunk) in
-        Hashtbl.add tbl key
-          (Buffer.create
-             ~positions:(Array.sub pos_scratch 0 n)
-             ~colors:(Array.sub col_scratch 0 n))
-      end);
-  tbl
+      let cx = Chunk.x chunk and cy = Chunk.y chunk and cz = Chunk.z chunk in
+      let dx = cx - player_cx and dz = cz - player_cz in
+      if abs dx > rd || abs dz > rd then
+        to_unload := (cx, cy, cz) :: !to_unload);
+  List.iter
+    (fun (cx, cy, cz) ->
+      (match Hashtbl.find_opt chunk_bufs (cx, cy, cz) with
+      | Some buf ->
+          Buffer.destroy buf;
+          Hashtbl.remove chunk_bufs (cx, cy, cz)
+      | None -> ());
+      World.remove_chunk world cx cy cz;
+      List.iter
+        (fun (ncx, ncy, ncz) ->
+          if World.get_chunk world ncx ncy ncz <> None then
+            mesh ncx ncy ncz)
+        (neighbours cx cy cz))
+    !to_unload;
+  (* 2. drain finished generation results *)
+  let still_in_range cx cy cz =
+    let dx = cx - player_cx and dz = cz - player_cz in
+    abs dx <= rd && abs dz <= rd
+    && cy >= Config.chunk_y_min && cy <= Config.chunk_y_max
+  in
+  let rec drain n =
+    if n <= 0 then ()
+    else
+      match Chunk_worker.poll worker with
+      | None -> ()
+      | Some ((cx, cy, cz), blocks) ->
+          if still_in_range cx cy cz
+             && World.get_chunk world cx cy cz = None
+          then begin
+            apply_chunk_result world chunk_bufs ~scratch_pos ~scratch_col
+              (cx, cy, cz) blocks;
+            drain (n - 1)
+          end
+          else
+            (* result is no longer wanted; drop it but keep draining the
+               same budget so a stale result doesn't cost us a real load *)
+            drain n
+  in
+  drain Config.chunk_load_budget;
+  (* 3. request missing chunks inside the radius, closest first *)
+  let missing = ref [] in
+  for cx = player_cx - rd to player_cx + rd do
+    for cz = player_cz - rd to player_cz + rd do
+      let dx = cx - player_cx and dz = cz - player_cz in
+      let d2 = (dx * dx) + (dz * dz) in
+      if d2 <= rd * rd then
+        for cy = Config.chunk_y_min to Config.chunk_y_max do
+          if World.get_chunk world cx cy cz = None
+             && not (Chunk_worker.pending worker (cx, cy, cz))
+          then missing := (d2, cx, cy, cz) :: !missing
+        done
+    done
+  done;
+  let sorted =
+    List.sort (fun (a, _, _, _) (b, _, _, _) -> compare a b) !missing
+  in
+  List.iter
+    (fun (_, cx, cy, cz) -> Chunk_worker.request worker (cx, cy, cz))
+    sorted
 
 let () =
   let win = Window.create ~title:"ocaml-voxel" ~w:800 ~h:600 in
@@ -165,8 +248,15 @@ let () =
     Shader.create ~vertex_source:vertex_shader_source
       ~fragment_source:fragment_shader_source
   in
-  let world = build_world () in
-  let chunk_bufs = build_chunk_buffers world in
+  let world = World.create () in
+  let chunk_bufs : (int * int * int, Buffer.t) Hashtbl.t = Hashtbl.create 256 in
+  (* shared scratch arrays for meshing; sized for the worst case (every
+     block solid with every face exposed) so they never need to grow *)
+  let cs = Config.chunk_size in
+  let max_floats = cs * cs * cs * 6 * 6 * 3 in
+  let scratch_pos = Array.create_float max_floats in
+  let scratch_col = Array.create_float max_floats in
+  let worker = Chunk_worker.create () in
   let crosshair =
     Crosshair.create ~vertex_source:crosshair_vertex_source
       ~fragment_source:crosshair_fragment_source
@@ -174,10 +264,31 @@ let () =
   let hotbar = create_hotbar () in
   Gl.enable Gl.depth_test;
   let input = Input.create () in
-  (* spawn above the center of the chunk *)
+  (* spawn above the centre of the world; high enough to never spawn inside
+     terrain, then update_chunks below loads the column underneath us *)
   let camera =
-    Camera.create ~pos:(Math3d.vec3 8.0 10.0 8.0) ~yaw:0.0 ~pitch:(-0.3)
+    Camera.create ~pos:(Math3d.vec3 8.0 30.0 8.0) ~yaw:0.0 ~pitch:(-0.3)
   in
+  let player_chunk_loaded () =
+    let player_cx = Float.to_int (Float.floor (camera.pos.x /. Float.of_int cs)) in
+    let player_cz = Float.to_int (Float.floor (camera.pos.z /. Float.of_int cs)) in
+    let any = ref false in
+    for cy = Config.chunk_y_min to Config.chunk_y_max do
+      if World.get_chunk world player_cx cy player_cz <> None then any := true
+    done;
+    !any
+  in
+  (* request chunks around the spawn position, then block on poll_blocking
+     until the column under the player is ready, so the first physics step
+     doesn't fall through nothing *)
+  update_chunks world chunk_bufs worker ~camera ~scratch_pos ~scratch_col;
+  while not (player_chunk_loaded ()) do
+    match Chunk_worker.poll_blocking worker with
+    | None -> ()
+    | Some ((cx, cy, cz), blocks) ->
+        apply_chunk_result world chunk_bufs ~scratch_pos ~scratch_col
+          (cx, cy, cz) blocks
+  done;
   (match Sdl.set_relative_mouse_mode true with
   | Ok () -> ()
   | Error (`Msg e) -> prerr_endline ("warning: relative mouse mode failed: " ^ e));
@@ -342,7 +453,7 @@ let () =
       begin match target with
       | Some (bx, by, bz, _, _, _) ->
           World.set_block world bx by bz Block.Air;
-          rebuild_affected_chunks world chunk_bufs bx by bz
+          rebuild_affected_chunks world chunk_bufs ~scratch_pos ~scratch_col bx by bz
       | None -> ()
       end;
     (* right click: place block on rising edge OR hold with cooldown *)
@@ -365,7 +476,7 @@ let () =
           in
           if (not overlaps) && World.get_block world px py pz = Block.Air then begin
             World.set_block world px py pz !held_block;
-            rebuild_affected_chunks world chunk_bufs px py pz
+            rebuild_affected_chunks world chunk_bufs ~scratch_pos ~scratch_col px py pz
           end
       | None -> ()
     in
@@ -379,6 +490,7 @@ let () =
     end;
     prev_mouse_left := ml_now;
     prev_mouse_right := mr_now;
+    update_chunks world chunk_bufs worker ~camera ~scratch_pos ~scratch_col;
     let w, h = Sdl.gl_get_drawable_size win.window in
     let aspect = Float.of_int w /. Float.of_int (max 1 h) in
     let proj =
@@ -389,11 +501,27 @@ let () =
     Gl.clear Gl.(color_buffer_bit lor depth_buffer_bit);
     Shader.use shader;
     Shader.set_uniform_mat4 shader "mvp" mvp;
-    Hashtbl.iter (fun _ buf -> Buffer.draw buf) chunk_bufs;
+    let frustum = Frustum.of_mvp mvp in
+    let cs_f = Float.of_int Config.chunk_size in
+    Hashtbl.iter
+      (fun (cx, cy, cz) buf ->
+        let bmin =
+          Math3d.vec3
+            (Float.of_int cx *. cs_f)
+            (Float.of_int cy *. cs_f)
+            (Float.of_int cz *. cs_f)
+        in
+        let bmax =
+          Math3d.vec3 (bmin.x +. cs_f) (bmin.y +. cs_f) (bmin.z +. cs_f)
+        in
+        if Frustum.intersects_aabb frustum ~min:bmin ~max:bmax then
+          Buffer.draw buf)
+      chunk_bufs;
     Crosshair.draw crosshair aspect;
     draw_hotbar hotbar ~held:!held_block ~aspect;
     Window.swap win
   done;
+  Chunk_worker.destroy worker;
   Hashtbl.iter (fun _ buf -> Buffer.destroy buf) chunk_bufs;
   Crosshair.destroy crosshair;
   destroy_hotbar hotbar;

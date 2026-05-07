@@ -13,3 +13,14 @@ let player_height = 1.8
 let gravity = 20.0
 let jump_velocity = 8.0
 let max_reach = 5.0
+
+(* horizontal radius (in chunks) around the player to keep loaded *)
+let render_distance = 8
+
+(* vertical chunk range. terrain heights peak around y=10, so [-2..1] covers
+   everything that could contain solid blocks *)
+let chunk_y_min = -2
+let chunk_y_max = 1
+
+(* maximum chunks to generate per frame to bound per-frame work *)
+let chunk_load_budget = 4

@@ -43,3 +43,16 @@ val jump_velocity : float
 
 (** how far the player can reach to break or place blocks, in world units *)
 val max_reach : float
+
+(** horizontal radius, in chunks, around the player to keep loaded *)
+val render_distance : int
+
+(** lowest chunk y-index that can contain non-air blocks *)
+val chunk_y_min : int
+
+(** highest chunk y-index that can contain non-air blocks *)
+val chunk_y_max : int
+
+(** maximum number of new chunks to generate (and mesh) per frame, used to
+    cap the per-frame stall when streaming the world *)
+val chunk_load_budget : int

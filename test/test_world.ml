@@ -38,7 +38,16 @@
     - All color values in the color array lie in [0, 1].
 
     {2 [iter]}
-    - Visits every generated chunk exactly once. *)
+    - Visits every generated chunk exactly once.
+
+    {2 [add_chunk] / [remove_chunk]}
+    - [add_chunk] inserts a chunk under its declared coordinates and is
+      observable via [get_chunk].
+    - Adding a chunk at a coordinate that already has one replaces the
+      existing entry; the loaded count does not grow.
+    - [remove_chunk] removes the chunk; subsequent [get_chunk] returns
+      [None] and [get_block] reverts to [Air].
+    - [remove_chunk] on an unloaded coordinate is a no-op (no exception). *)
 
 open OUnit2
 
@@ -263,6 +272,60 @@ let test_mesh_color_in_range _ =
         (v >= 0.0 && v <= 1.0))
     col
 
+(* ------------------------------------------------------------------ *)
+(*  {1 add_chunk / remove_chunk}                                        *)
+(* ------------------------------------------------------------------ *)
+
+let test_add_chunk_inserts _ =
+  let w = fresh () in
+  let blocks = Array.make (cs * cs * cs) Block.Stone in
+  let c = Chunk.create ~x:2 ~y:0 ~z:(-3) ~blocks in
+  World.add_chunk w c;
+  match World.get_chunk w 2 0 (-3) with
+  | None -> assert_failure "add_chunk did not insert"
+  | Some c' ->
+      assert_equal 2 (Chunk.x c');
+      assert_equal 0 (Chunk.y c');
+      assert_equal (-3) (Chunk.z c')
+
+let test_add_chunk_replaces _ =
+  let w = fresh () in
+  let stone = Array.make (cs * cs * cs) Block.Stone in
+  let dirt = Array.make (cs * cs * cs) Block.Dirt in
+  World.add_chunk w (Chunk.create ~x:0 ~y:0 ~z:0 ~blocks:stone);
+  World.add_chunk w (Chunk.create ~x:0 ~y:0 ~z:0 ~blocks:dirt);
+  let count = ref 0 in
+  World.iter w (fun _ -> incr count);
+  assert_equal ~msg:"replace, not duplicate" 1 !count;
+  assert_equal ~msg:"second chunk wins" Block.Dirt (World.get_block w 0 0 0)
+
+let test_remove_chunk _ =
+  let w = with_chunk (fresh ()) in
+  assert_bool "chunk loaded before remove" (World.get_chunk w 0 0 0 <> None);
+  World.remove_chunk w 0 0 0;
+  assert_equal ~msg:"get_chunk → None after remove" None
+    (World.get_chunk w 0 0 0);
+  assert_equal ~msg:"get_block → Air after remove" Block.Air
+    (World.get_block w 0 0 0)
+
+let test_remove_missing_noop _ =
+  let w = fresh () in
+  (* Must not raise. *)
+  World.remove_chunk w 42 42 42;
+  let count = ref 0 in
+  World.iter w (fun _ -> incr count);
+  assert_equal ~msg:"empty stays empty" 0 !count
+
+let test_add_then_remove_iter _ =
+  let w = fresh () in
+  let blocks = Array.make (cs * cs * cs) Block.Air in
+  World.add_chunk w (Chunk.create ~x:1 ~y:0 ~z:0 ~blocks);
+  World.add_chunk w (Chunk.create ~x:2 ~y:0 ~z:0 ~blocks);
+  World.remove_chunk w 1 0 0;
+  let found = ref [] in
+  World.iter w (fun c -> found := (Chunk.x c, Chunk.y c, Chunk.z c) :: !found);
+  assert_equal ~msg:"only chunk 2 remains" [ (2, 0, 0) ] !found
+
 let tests =
   "World"
   >::: [
@@ -296,6 +359,12 @@ let tests =
          "mesh_nonempty" >:: test_mesh_nonempty;
          "mesh_single_block" >:: test_mesh_single_block_face_count;
          "mesh_color_range" >:: test_mesh_color_in_range;
+         (* add_chunk / remove_chunk *)
+         "add_chunk_inserts" >:: test_add_chunk_inserts;
+         "add_chunk_replaces" >:: test_add_chunk_replaces;
+         "remove_chunk" >:: test_remove_chunk;
+         "remove_missing_noop" >:: test_remove_missing_noop;
+         "add_then_remove_iter" >:: test_add_then_remove_iter;
        ]
 
 let _ = run_test_tt_main tests

@@ -11,6 +11,8 @@
   test_physics
   test_camera
   test_input
+  test_frustum
+  test_chunk_worker
   test_ocaml_voxel)
  (libraries ounit2 qcheck-core qcheck-ounit ocaml_voxel tsdl)
  (instrumentation
