@@ -24,3 +24,7 @@ let chunk_y_max = 1
 
 (* maximum chunks to generate per frame to bound per-frame work *)
 let chunk_load_budget = 4
+
+(* shade multipliers for ao levels 0..3, where 0 is fully lit and 3 is most
+   occluded. applied on top of per-face shading in world.ml *)
+let ao_shade = [| 1.0; 0.8; 0.65; 0.5 |]

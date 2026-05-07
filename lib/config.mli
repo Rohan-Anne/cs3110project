@@ -56,3 +56,7 @@ val chunk_y_max : int
 (** maximum number of new chunks to generate (and mesh) per frame, used to cap
     the per-frame stall when streaming the world *)
 val chunk_load_budget : int
+
+(** shade multipliers indexed by ao level 0..3, where 0 is no occlusion and 3 is
+    fully occluded. multiply a face color by this before writing vertices *)
+val ao_shade : float array

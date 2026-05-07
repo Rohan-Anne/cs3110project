@@ -67,21 +67,42 @@ let mesh_into world chunk pos_buf col_buf =
     col_buf.(i + 2) <- b;
     n := i + 3
   in
-  let add_face c (ax, ay, az) (bx, by, bz) (cx, cy, cz) (dx, dy, dz) =
-    let r, g, b = Color.to_tuple c in
-    write ax ay az r g b;
-    write bx by bz r g b;
-    write cx cy cz r g b;
-    write ax ay az r g b;
-    write cx cy cz r g b;
-    write dx dy dz r g b
-  in
   (* use direct chunk access for intra-chunk neighbors, hashtable only at
      edges *)
   let air_at bx by bz =
     if bx >= 0 && bx < cs && by >= 0 && by < cs && bz >= 0 && bz < cs then
       Chunk.get chunk bx by bz = Block.Air
     else get_block world (wx + bx) (wy + by) (wz + bz) = Block.Air
+  in
+  let solid_at bx' by' bz' = not (air_at bx' by' bz') in
+  let ao_value s1 s2 corner =
+    if s1 && s2 then 3
+    else (if s1 then 1 else 0) + (if s2 then 1 else 0) + if corner then 1 else 0
+  in
+  let add_face_ao base_c ao0 ao1 ao2 ao3 p0 p1 p2 p3 =
+    let wv (x, y, z) ao =
+      let s = Config.ao_shade.(ao) in
+      let r, g, b = Color.to_tuple (Color.shade s base_c) in
+      write x y z r g b
+    in
+    (* flip quad diagonal when the ao gradient favors it to prevent a harsh dark
+       stripe across the wrong triangle *)
+    if ao0 + ao2 > ao1 + ao3 then begin
+      wv p0 ao0;
+      wv p1 ao1;
+      wv p3 ao3;
+      wv p1 ao1;
+      wv p2 ao2;
+      wv p3 ao3
+    end
+    else begin
+      wv p0 ao0;
+      wv p1 ao1;
+      wv p2 ao2;
+      wv p0 ao0;
+      wv p2 ao2;
+      wv p3 ao3
+    end
   in
   for bx = 0 to cs - 1 do
     for by = 0 to cs - 1 do
@@ -94,42 +115,139 @@ let mesh_into world chunk pos_buf col_buf =
           let c = block_color block in
           (* positive x face *)
           if air_at (bx + 1) by bz then
-            add_face (Color.shade 0.6 c)
+            add_face_ao (Color.shade 0.6 c)
+              (ao_value
+                 (solid_at (bx + 1) (by - 1) bz)
+                 (solid_at (bx + 1) by (bz - 1))
+                 (solid_at (bx + 1) (by - 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by + 1) bz)
+                 (solid_at (bx + 1) by (bz - 1))
+                 (solid_at (bx + 1) (by + 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by + 1) bz)
+                 (solid_at (bx + 1) by (bz + 1))
+                 (solid_at (bx + 1) (by + 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by - 1) bz)
+                 (solid_at (bx + 1) by (bz + 1))
+                 (solid_at (bx + 1) (by - 1) (bz + 1)))
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx +. 1., fy, fz +. 1.);
           (* negative x face *)
           if air_at (bx - 1) by bz then
-            add_face (Color.shade 0.7 c)
+            add_face_ao (Color.shade 0.7 c)
+              (ao_value
+                 (solid_at (bx - 1) (by - 1) bz)
+                 (solid_at (bx - 1) by (bz + 1))
+                 (solid_at (bx - 1) (by - 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx - 1) (by + 1) bz)
+                 (solid_at (bx - 1) by (bz + 1))
+                 (solid_at (bx - 1) (by + 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx - 1) (by + 1) bz)
+                 (solid_at (bx - 1) by (bz - 1))
+                 (solid_at (bx - 1) (by + 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx - 1) (by - 1) bz)
+                 (solid_at (bx - 1) by (bz - 1))
+                 (solid_at (bx - 1) (by - 1) (bz - 1)))
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz)
               (fx, fy, fz);
           (* positive y face (top) *)
           if air_at bx (by + 1) bz then
-            add_face c
+            add_face_ao c
+              (ao_value
+                 (solid_at (bx - 1) (by + 1) bz)
+                 (solid_at bx (by + 1) (bz - 1))
+                 (solid_at (bx - 1) (by + 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by + 1) bz)
+                 (solid_at bx (by + 1) (bz - 1))
+                 (solid_at (bx + 1) (by + 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by + 1) bz)
+                 (solid_at bx (by + 1) (bz + 1))
+                 (solid_at (bx + 1) (by + 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx - 1) (by + 1) bz)
+                 (solid_at bx (by + 1) (bz + 1))
+                 (solid_at (bx - 1) (by + 1) (bz + 1)))
               (fx, fy +. 1., fz)
               (fx +. 1., fy +. 1., fz)
               (fx +. 1., fy +. 1., fz +. 1.)
               (fx, fy +. 1., fz +. 1.);
           (* negative y face (bottom) *)
           if air_at bx (by - 1) bz then
-            add_face (Color.shade 0.5 c)
+            add_face_ao (Color.shade 0.5 c)
+              (ao_value
+                 (solid_at (bx - 1) (by - 1) bz)
+                 (solid_at bx (by - 1) (bz + 1))
+                 (solid_at (bx - 1) (by - 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by - 1) bz)
+                 (solid_at bx (by - 1) (bz + 1))
+                 (solid_at (bx + 1) (by - 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx + 1) (by - 1) bz)
+                 (solid_at bx (by - 1) (bz - 1))
+                 (solid_at (bx + 1) (by - 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx - 1) (by - 1) bz)
+                 (solid_at bx (by - 1) (bz - 1))
+                 (solid_at (bx - 1) (by - 1) (bz - 1)))
               (fx, fy, fz +. 1.)
               (fx +. 1., fy, fz +. 1.)
               (fx +. 1., fy, fz)
               (fx, fy, fz);
           (* positive z face *)
           if air_at bx by (bz + 1) then
-            add_face (Color.shade 0.9 c)
+            add_face_ao (Color.shade 0.9 c)
+              (ao_value
+                 (solid_at (bx + 1) by (bz + 1))
+                 (solid_at bx (by - 1) (bz + 1))
+                 (solid_at (bx + 1) (by - 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx - 1) by (bz + 1))
+                 (solid_at bx (by - 1) (bz + 1))
+                 (solid_at (bx - 1) (by - 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx - 1) by (bz + 1))
+                 (solid_at bx (by + 1) (bz + 1))
+                 (solid_at (bx - 1) (by + 1) (bz + 1)))
+              (ao_value
+                 (solid_at (bx + 1) by (bz + 1))
+                 (solid_at bx (by + 1) (bz + 1))
+                 (solid_at (bx + 1) (by + 1) (bz + 1)))
               (fx +. 1., fy, fz +. 1.)
               (fx, fy, fz +. 1.)
               (fx, fy +. 1., fz +. 1.)
               (fx +. 1., fy +. 1., fz +. 1.);
           (* negative z face *)
           if air_at bx by (bz - 1) then
-            add_face (Color.shade 0.8 c) (fx, fy, fz)
+            add_face_ao (Color.shade 0.8 c)
+              (ao_value
+                 (solid_at (bx - 1) by (bz - 1))
+                 (solid_at bx (by - 1) (bz - 1))
+                 (solid_at (bx - 1) (by - 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) by (bz - 1))
+                 (solid_at bx (by - 1) (bz - 1))
+                 (solid_at (bx + 1) (by - 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx + 1) by (bz - 1))
+                 (solid_at bx (by + 1) (bz - 1))
+                 (solid_at (bx + 1) (by + 1) (bz - 1)))
+              (ao_value
+                 (solid_at (bx - 1) by (bz - 1))
+                 (solid_at bx (by + 1) (bz - 1))
+                 (solid_at (bx - 1) (by + 1) (bz - 1)))
+              (fx, fy, fz)
               (fx +. 1., fy, fz)
               (fx +. 1., fy +. 1., fz)
               (fx, fy +. 1., fz)
