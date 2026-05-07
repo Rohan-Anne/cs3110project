@@ -11,5 +11,8 @@ val use : t -> unit
 (** upload a 4x4 matrix to a named uniform *)
 val set_uniform_mat4 : t -> string -> Math3d.mat4 -> unit
 
+(** upload a single float to a named uniform *)
+val set_uniform_float : t -> string -> float -> unit
+
 (** delete the GPU program *)
 val destroy : t -> unit

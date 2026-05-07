@@ -52,4 +52,10 @@ let ground_movement_from_input t inp ~move_speed ~sprint_speed ~dt =
   if Math3d.length flat > 0.0 then Math3d.scale (Math3d.normalize flat) speed
   else flat
 
+(** full 3D look direction including pitch *)
+let look_dir t =
+  let cp = cos t.pitch in
+  Math3d.normalize
+    (Math3d.vec3 (-.sin t.yaw *. cp) (sin t.pitch) (-.cos t.yaw *. cp))
+
 let view t = Math3d.view_from_camera ~position:t.pos ~yaw:t.yaw ~pitch:t.pitch

@@ -136,3 +136,49 @@ let mesh_chunk world chunk =
   (Array.sub pos_buf 0 used, Array.sub col_buf 0 used)
 
 let iter world f = Hashtbl.iter (fun _ c -> f c) world.chunks
+
+(* DDA voxel raycast. Returns Some (bx, by, bz, nx, ny, nz) where (bx,by,bz)
+   is the first solid block hit and (nx,ny,nz) is the face normal pointing
+   back toward the ray origin. Returns None if no block within max_dist. *)
+let raycast world ~origin ~dir ~max_dist =
+  let open Math3d in
+  let ifloor f = Float.to_int (floor f) in
+  let bx = ref (ifloor origin.x) in
+  let by = ref (ifloor origin.y) in
+  let bz = ref (ifloor origin.z) in
+  let sx = if dir.x >= 0.0 then 1 else -1 in
+  let sy = if dir.y >= 0.0 then 1 else -1 in
+  let sz = if dir.z >= 0.0 then 1 else -1 in
+  let t_max_x = ref (
+    if Float.abs dir.x < 1e-9 then Float.infinity
+    else if dir.x > 0.0 then (Float.of_int (!bx + 1) -. origin.x) /. dir.x
+    else (Float.of_int !bx -. origin.x) /. dir.x) in
+  let t_max_y = ref (
+    if Float.abs dir.y < 1e-9 then Float.infinity
+    else if dir.y > 0.0 then (Float.of_int (!by + 1) -. origin.y) /. dir.y
+    else (Float.of_int !by -. origin.y) /. dir.y) in
+  let t_max_z = ref (
+    if Float.abs dir.z < 1e-9 then Float.infinity
+    else if dir.z > 0.0 then (Float.of_int (!bz + 1) -. origin.z) /. dir.z
+    else (Float.of_int !bz -. origin.z) /. dir.z) in
+  let td_x = if Float.abs dir.x < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.x) in
+  let td_y = if Float.abs dir.y < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.y) in
+  let td_z = if Float.abs dir.z < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.z) in
+  let nx = ref 0 and ny = ref 0 and nz = ref 0 in
+  let result = ref None in
+  while !result = None
+        && Float.min !t_max_x (Float.min !t_max_y !t_max_z) <= max_dist do
+    if !t_max_x <= !t_max_y && !t_max_x <= !t_max_z then begin
+      bx := !bx + sx; t_max_x := !t_max_x +. td_x;
+      nx := -sx; ny := 0; nz := 0
+    end else if !t_max_y <= !t_max_z then begin
+      by := !by + sy; t_max_y := !t_max_y +. td_y;
+      nx := 0; ny := -sy; nz := 0
+    end else begin
+      bz := !bz + sz; t_max_z := !t_max_z +. td_z;
+      nx := 0; ny := 0; nz := -sz
+    end;
+    if get_block world !bx !by !bz <> Block.Air then
+      result := Some (!bx, !by, !bz, !nx, !ny, !nz)
+  done;
+  !result

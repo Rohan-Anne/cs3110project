@@ -34,3 +34,6 @@ val gravity : float
 
 (** initial vertical speed when jumping in blocks/s *)
 val jump_velocity : float
+
+(** how far the player can reach to break or place blocks, in world units *)
+val max_reach : float

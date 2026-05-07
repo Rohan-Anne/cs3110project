@@ -27,3 +27,15 @@ val mesh_chunk : t -> Chunk.t -> float array * float array
 
 (** iterate over all loaded chunks *)
 val iter : t -> (Chunk.t -> unit) -> unit
+
+(** [raycast world ~origin ~dir ~max_dist] steps a ray from [origin] in
+    direction [dir] (need not be normalised) and returns
+    [Some (bx, by, bz, nx, ny, nz)] for the first solid block hit within
+    [max_dist] world units, where [(nx,ny,nz)] is the face normal pointing back
+    toward the origin. Returns [None] if nothing is hit. *)
+val raycast :
+  t ->
+  origin:Math3d.vec3 ->
+  dir:Math3d.vec3 ->
+  max_dist:float ->
+  (int * int * int * int * int * int) option

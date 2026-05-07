@@ -33,5 +33,8 @@ val ground_movement_from_input :
   dt:float ->
   Math3d.vec3
 
+(** 3D unit vector in the direction the camera is looking, accounting for pitch *)
+val look_dir : t -> Math3d.vec3
+
 (** compute the view matrix for the current camera state *)
 val view : t -> Math3d.mat4

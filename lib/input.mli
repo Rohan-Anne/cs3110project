@@ -9,6 +9,8 @@ type t = {
   mutable mouse_dx : float;
       (** accumulated horizontal mouse delta this frame *)
   mutable mouse_dy : float;  (** accumulated vertical mouse delta this frame *)
+  mutable mouse_left : bool;  (** true while the left mouse button is held *)
+  mutable mouse_right : bool;  (** true while the right mouse button is held *)
   keys_down : (Sdl.scancode, bool) Hashtbl.t;
 }
 
