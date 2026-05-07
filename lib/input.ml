@@ -66,12 +66,12 @@ let poll input =
           input.mouse_dy +. Float.of_int Sdl.Event.(get e mouse_motion_yrel)
     | `Mouse_button_down ->
         let b = Sdl.Event.(get e mouse_button_button) in
-        if b = 1 then input.mouse_left <- true
-        else if b = 3 then input.mouse_right <- true
+        if b = Sdl.Button.left then input.mouse_left <- true
+        else if b = Sdl.Button.right then input.mouse_right <- true
     | `Mouse_button_up ->
         let b = Sdl.Event.(get e mouse_button_button) in
-        if b = 1 then input.mouse_left <- false
-        else if b = 3 then input.mouse_right <- false
+        if b = Sdl.Button.left then input.mouse_left <- false
+        else if b = Sdl.Button.right then input.mouse_right <- false
     (* on window resize event *)
     | `Window_event
       when Sdl.Event.(get e window_event_id)
