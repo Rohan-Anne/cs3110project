@@ -8,4 +8,6 @@
   (file shaders/fragment.frag)
   (file shaders/vertex.vert)
   (file shaders/crosshair.vert)
-  (file shaders/crosshair.frag)))
+  (file shaders/crosshair.frag)
+  (file shaders/hotbar.vert)
+  (file shaders/hotbar.frag)))
