@@ -1,5 +1,7 @@
 let move_speed = 4.0
 let sprint_speed = 8.0
+let crouch_speed = 2.0
+let crouch_height = 1.5
 let mouse_sensitivity = 0.002
 let pitch_limit = 1.54
 let chunk_size = 16

@@ -183,6 +183,8 @@ let () =
   let prev_g = ref false in
   let prev_mouse_left = ref false in
   let prev_mouse_right = ref false in
+  let is_crouching = ref false in
+  let place_cooldown = ref 0.0 in
   (* block type the player will place; cycle with 1/2/3 *)
   let held_block = ref Block.Stone in
   let prev_ticks = ref (Sdl.get_ticks ()) in
@@ -206,6 +208,39 @@ let () =
       vel_y := 0.0
     end;
     prev_g := g_now;
+    (* crouching: only active in Survival; lshift held *)
+    let was_crouching = !is_crouching in
+    (match !mode with
+    | Creative -> is_crouching := false
+    | Survival ->
+        let want_crouch = Input.is_down input Sdl.Scancode.lshift in
+        if want_crouch && not was_crouching then begin
+          (* lower camera eye to match crouched height *)
+          let feet_y = camera.pos.y -. (Config.player_height -. 0.2) in
+          camera.pos <-
+            { camera.pos with y = feet_y +. (Config.crouch_height -. 0.2) };
+          is_crouching := true
+        end else if (not want_crouch) && was_crouching then begin
+          (* try to stand: check headroom by sweeping upward *)
+          let delta_y = Config.player_height -. Config.crouch_height in
+          let crouched_box =
+            Physics.at_position ~height:Config.crouch_height camera.pos
+          in
+          let actual =
+            Physics.move world crouched_box (Math3d.vec3 0.0 delta_y 0.0)
+          in
+          if actual.y >= delta_y -. 1e-6 then begin
+            let feet_y = camera.pos.y -. (Config.crouch_height -. 0.2) in
+            camera.pos <-
+              { camera.pos with y = feet_y +. (Config.player_height -. 0.2) };
+            is_crouching := false
+          end else
+            is_crouching := true
+        end else
+          is_crouching := was_crouching);
+    let eff_height =
+      if !is_crouching then Config.crouch_height else Config.player_height
+    in
     let space_now = Input.is_down input Sdl.Scancode.space in
     (match !mode with
     | Creative ->
@@ -217,16 +252,64 @@ let () =
     | Survival ->
         (* gravity accumulates downward each frame *)
         vel_y := !vel_y -. (Config.gravity *. dt);
-        (* jump on rising edge of space, only when on the ground *)
-        if space_now && (not !prev_space) && !on_ground then
+        (* jump on rising edge of space, only when on the ground and not crouching *)
+        if space_now && (not !prev_space) && !on_ground && not !is_crouching then
           vel_y := Config.jump_velocity;
+        let eff_move_speed =
+          if !is_crouching then Config.crouch_speed else Config.move_speed
+        in
         let horiz =
           Camera.ground_movement_from_input camera input
-            ~move_speed:Config.move_speed ~sprint_speed:Config.sprint_speed ~dt
+            ~move_speed:eff_move_speed ~sprint_speed:Config.sprint_speed ~dt
         in
         let delta = Math3d.vec3 horiz.x (!vel_y *. dt) horiz.z in
-        let box = Physics.at_position camera.pos in
+        let box = Physics.at_position ~height:eff_height camera.pos in
         let actual = Physics.move world box delta in
+        (* sneak: prevent walking off edges.
+           Scans the full player width on the movement axis but only the
+           center column on the stationary axis, so corners don't let you
+           slip off while the full-width scan gives enough overhang (~0.3
+           blocks) for the DDA to see the side face when bridging. *)
+        let actual =
+          if !is_crouching && !on_ground then begin
+            let ifloor f = Float.to_int (floor f) in
+            let feet_y = camera.pos.y -. (eff_height -. 0.2) in
+            let by = ifloor (feet_y -. 1e-3) in
+            let hw = Config.player_width /. 2.0 in
+            let has_ground_x cx_test cz_cur =
+              let bz = ifloor cz_cur in
+              let bx0 = ifloor (cx_test -. hw) in
+              let bx1 = ifloor (cx_test +. hw -. 1e-6) in
+              let found = ref false in
+              for bx = bx0 to bx1 do
+                if World.get_block world bx by bz <> Block.Air then
+                  found := true
+              done;
+              !found
+            in
+            let has_ground_z cx_cur cz_test =
+              let bx = ifloor cx_cur in
+              let bz0 = ifloor (cz_test -. hw) in
+              let bz1 = ifloor (cz_test +. hw -. 1e-6) in
+              let found = ref false in
+              for bz = bz0 to bz1 do
+                if World.get_block world bx by bz <> Block.Air then
+                  found := true
+              done;
+              !found
+            in
+            let safe_x =
+              has_ground_x (camera.pos.x +. actual.x) camera.pos.z
+            in
+            let safe_z =
+              has_ground_z camera.pos.x (camera.pos.z +. actual.z)
+            in
+            Math3d.vec3
+              (if safe_x then actual.x else 0.0)
+              actual.y
+              (if safe_z then actual.z else 0.0)
+          end else actual
+        in
         (* detect floor collision: wanted to go down but were blocked *)
         if delta.y < -1e-6 && actual.y > delta.y +. 1e-6 then begin
           on_ground := true;
@@ -258,13 +341,13 @@ let () =
           rebuild_affected_chunks world chunk_bufs bx by bz
       | None -> ()
       end;
-    (* right click: place block on rising edge, on the face normal *)
-    if mr_now && not !prev_mouse_right then
-      begin match target with
+    (* right click: place block on rising edge OR hold with cooldown *)
+    place_cooldown := Float.max 0.0 (!place_cooldown -. dt);
+    let try_place () =
+      match target with
       | Some (bx, by, bz, nx, ny, nz) ->
           let px = bx + nx and py = by + ny and pz = bz + nz in
-          (* don't place inside the player *)
-          let box = Physics.at_position camera.pos in
+          let box = Physics.at_position ~height:eff_height camera.pos in
           let block_min_x = Float.of_int px
           and block_max_x = Float.of_int (px + 1) in
           let block_min_y = Float.of_int py
@@ -281,7 +364,14 @@ let () =
             rebuild_affected_chunks world chunk_bufs px py pz
           end
       | None -> ()
-      end;
+    in
+    if mr_now && not !prev_mouse_right then begin
+      try_place ();
+      place_cooldown := 0.5
+    end else if mr_now && !place_cooldown = 0.0 then begin
+      try_place ();
+      place_cooldown := 0.2
+    end;
     prev_mouse_left := ml_now;
     prev_mouse_right := mr_now;
     let w, h = Sdl.gl_get_drawable_size win.window in

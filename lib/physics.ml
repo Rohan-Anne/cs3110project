@@ -10,10 +10,9 @@ type aabb = {
         [max].
    RI: [min.x <= max.x], [min.y <= max.y], [min.z <= max.z]. *)
 
-let eye_above_feet = Config.player_height -. 0.2
-
-let at_position pos =
+let at_position ?(height = Config.player_height) pos =
   let hw = Config.player_width /. 2.0 in
+  let eye_above_feet = height -. 0.2 in
   {
     min = vec3 (pos.x -. hw) (pos.y -. eye_above_feet) (pos.z -. hw);
     max = vec3 (pos.x +. hw) (pos.y +. 0.2) (pos.z +. hw);
@@ -123,6 +122,15 @@ let resolve_z world box dz =
       done
     end;
     !result
+
+let has_ground_below world box =
+  let by = ifloor (box.min.y -. 1e-3) in
+  (* Subtract a tiny epsilon so a center exactly on a block boundary is treated
+     as still belonging to the block behind it, letting the player reach the
+     exact edge (needed for crouched bridge-building). *)
+  let bx = ifloor ((box.min.x +. box.max.x) /. 2.0 -. 1e-4) in
+  let bz = ifloor ((box.min.z +. box.max.z) /. 2.0 -. 1e-4) in
+  World.get_block world bx by bz <> Block.Air
 
 let move world box delta =
   let dx = resolve_x world box delta.x in

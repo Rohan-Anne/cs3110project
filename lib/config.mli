@@ -4,6 +4,12 @@ val move_speed : float
 (** sprint movement speed *)
 val sprint_speed : float
 
+(** movement speed while crouching *)
+val crouch_speed : float
+
+(** player AABB height while crouching *)
+val crouch_height : float
+
 (** how sensitive the mouse is. converts an dx or dy from input and turns it
     into delta yaw/pitch *)
 val mouse_sensitivity : float
