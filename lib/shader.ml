@@ -75,8 +75,17 @@ let mat4_scratch = Gl_utils.bigarray_create Bigarray.float32 16
 let set_uniform_mat4 t name values =
   let loc = uniform_location t name in
   if loc <> -1 then begin
-    Array.iteri (Bigarray.Array1.set mat4_scratch) values;
+    Array.iteri (fun i v -> mat4_scratch.{i} <- v) values;
     Gl.uniform_matrix4fv loc 1 false mat4_scratch
+  end
+
+let float1_scratch = Gl_utils.bigarray_create Bigarray.float32 1
+
+let set_uniform_float t name value =
+  let loc = uniform_location t name in
+  if loc <> -1 then begin
+    float1_scratch.{0} <- value;
+    Gl.uniform1fv loc 1 float1_scratch
   end
 
 let destroy t = Gl.delete_program t.program

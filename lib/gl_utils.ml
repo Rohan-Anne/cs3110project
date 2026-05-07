@@ -24,8 +24,16 @@ let get_string len fill =
 
 let float32_array values =
   let data = bigarray_create Bigarray.float32 (Array.length values) in
-  Array.iteri (Bigarray.Array1.set data) values;
+  Array.iteri (fun i v -> data.{i} <- v) values;
   data
 
 let shader_status shader param = get_int (Gl.get_shaderiv shader param)
 let program_status program param = get_int (Gl.get_programiv program param)
+
+let check_nonzero label n =
+  if n = 0 then
+    failwith (Printf.sprintf "%s: GL returned 0 (context error?)" label)
+
+let gl_check label =
+  let e = Gl.get_error () in
+  if e <> Gl.no_error then failwith (Printf.sprintf "%s: GL error 0x%x" label e)

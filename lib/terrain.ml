@@ -1,7 +1,7 @@
 let height_at x z =
   let scale = 0.05 in
-  let n = Noise.perlin2d (float_of_int x *. scale) (float_of_int z *. scale) in
-  int_of_float (6.0 +. (4.0 *. n))
+  let n = Noise.perlin2d (Float.of_int x *. scale) (Float.of_int z *. scale) in
+  Float.to_int (6.0 +. (4.0 *. n))
 
 let fill_chunk ~cx ~cy ~cz =
   let cs = Config.chunk_size in

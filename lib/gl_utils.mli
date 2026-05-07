@@ -36,3 +36,11 @@ val shader_status : int -> int -> int
 
 (** query an int status parameter from a program object *)
 val program_status : int -> int -> int
+
+(** [check_nonzero label n] raises if [n] is 0, indicating a GL object
+    allocation failure *)
+val check_nonzero : string -> int -> unit
+
+(** [gl_check label] calls [glGetError] and raises if the result is not
+    [no_error] *)
+val gl_check : string -> unit

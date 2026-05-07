@@ -10,3 +10,4 @@ let player_width = 0.6
 let player_height = 1.8
 let gravity = 20.0
 let jump_velocity = 8.0
+let max_reach = 5.0

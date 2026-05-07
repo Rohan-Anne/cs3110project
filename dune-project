@@ -19,7 +19,7 @@
  (name ocaml-voxel)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml ppx_blob tsdl tgls)
+ (depends ocaml ppx_blob tsdl tgls (ounit2 :with-test) (bisect_ppx :with-test) (qcheck :with-test))
  (tags
   ("add topics" "to describe" your project)))
 

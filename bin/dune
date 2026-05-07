@@ -6,4 +6,6 @@
   (pps ppx_blob))
  (preprocessor_deps
   (file shaders/fragment.frag)
-  (file shaders/vertex.vert)))
+  (file shaders/vertex.vert)
+  (file shaders/crosshair.vert)
+  (file shaders/crosshair.frag)))

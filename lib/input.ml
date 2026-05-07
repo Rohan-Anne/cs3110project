@@ -6,6 +6,8 @@ type t = {
   mutable resized : bool;
   mutable mouse_dx : float;
   mutable mouse_dy : float;
+  mutable mouse_left : bool;
+  mutable mouse_right : bool;
   keys_down : (Sdl.scancode, bool) Hashtbl.t;
 }
 
@@ -24,6 +26,8 @@ let create () =
     resized = false;
     mouse_dx = 0.0;
     mouse_dy = 0.0;
+    mouse_left = false;
+    mouse_right = false;
     keys_down = Hashtbl.create 64;
   }
 
@@ -57,9 +61,17 @@ let poll input =
     (* on mouse movement *)
     | `Mouse_motion ->
         input.mouse_dx <-
-          input.mouse_dx +. float_of_int Sdl.Event.(get e mouse_motion_xrel);
+          input.mouse_dx +. Float.of_int Sdl.Event.(get e mouse_motion_xrel);
         input.mouse_dy <-
-          input.mouse_dy +. float_of_int Sdl.Event.(get e mouse_motion_yrel)
+          input.mouse_dy +. Float.of_int Sdl.Event.(get e mouse_motion_yrel)
+    | `Mouse_button_down ->
+        let b = Sdl.Event.(get e mouse_button_button) in
+        if b = 1 then input.mouse_left <- true
+        else if b = 3 then input.mouse_right <- true
+    | `Mouse_button_up ->
+        let b = Sdl.Event.(get e mouse_button_button) in
+        if b = 1 then input.mouse_left <- false
+        else if b = 3 then input.mouse_right <- false
     (* on window resize event *)
     | `Window_event
       when Sdl.Event.(get e window_event_id)

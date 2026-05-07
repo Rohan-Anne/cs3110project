@@ -19,7 +19,7 @@ let at_position pos =
     max = vec3 (pos.x +. hw) (pos.y +. 0.2) (pos.z +. hw);
   }
 
-let ifloor f = int_of_float (floor f)
+let ifloor f = Float.to_int (floor f)
 
 (* resolve movement along X: returns the largest dx with the same sign that
    doesn't cause the box to overlap a solid block *)
@@ -32,7 +32,7 @@ let resolve_x world box dx =
     if dx > 0.0 then begin
       let x0 = ifloor box.max.x and x1 = ifloor (box.max.x +. dx) in
       for bx = x0 to x1 do
-        let corr = float_of_int bx -. box.max.x in
+        let corr = Float.of_int bx -. box.max.x in
         if corr >= 0.0 then
           for by = y0 to y1 do
             for bz = z0 to z1 do
@@ -45,7 +45,7 @@ let resolve_x world box dx =
     else begin
       let x0 = ifloor (box.min.x +. dx) and x1 = ifloor box.min.x in
       for bx = x0 to x1 do
-        let corr = float_of_int (bx + 1) -. box.min.x in
+        let corr = Float.of_int (bx + 1) -. box.min.x in
         if corr <= 0.0 then
           for by = y0 to y1 do
             for bz = z0 to z1 do
@@ -66,7 +66,7 @@ let resolve_y world box dy =
     if dy > 0.0 then begin
       let y0 = ifloor box.max.y and y1 = ifloor (box.max.y +. dy) in
       for by = y0 to y1 do
-        let corr = float_of_int by -. box.max.y in
+        let corr = Float.of_int by -. box.max.y in
         if corr >= 0.0 then
           for bx = x0 to x1 do
             for bz = z0 to z1 do
@@ -79,7 +79,7 @@ let resolve_y world box dy =
     else begin
       let y0 = ifloor (box.min.y +. dy) and y1 = ifloor box.min.y in
       for by = y0 to y1 do
-        let corr = float_of_int (by + 1) -. box.min.y in
+        let corr = Float.of_int (by + 1) -. box.min.y in
         for bx = x0 to x1 do
           for bz = z0 to z1 do
             if World.get_block world bx by bz <> Block.Air then
@@ -99,7 +99,7 @@ let resolve_z world box dz =
     if dz > 0.0 then begin
       let z0 = ifloor box.max.z and z1 = ifloor (box.max.z +. dz) in
       for bz = z0 to z1 do
-        let corr = float_of_int bz -. box.max.z in
+        let corr = Float.of_int bz -. box.max.z in
         if corr >= 0.0 then
           for bx = x0 to x1 do
             for by = y0 to y1 do
@@ -112,7 +112,7 @@ let resolve_z world box dz =
     else begin
       let z0 = ifloor (box.min.z +. dz) and z1 = ifloor box.min.z in
       for bz = z0 to z1 do
-        let corr = float_of_int (bz + 1) -. box.min.z in
+        let corr = Float.of_int (bz + 1) -. box.min.z in
         if corr <= 0.0 then
           for bx = x0 to x1 do
             for by = y0 to y1 do
