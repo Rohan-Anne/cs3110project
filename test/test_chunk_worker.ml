@@ -3,8 +3,8 @@
     {1 Module Overview}
     [Chunk_worker] runs a single OCaml [Domain] that pulls [(cx, cy, cz)]
     requests off a queue, runs [Terrain.fill_chunk] on them, and pushes the
-    resulting [Block.t array] back to the main thread. The main thread
-    consumes results via [poll] (non-blocking) or [poll_blocking].
+    resulting [Block.t array] back to the main thread. The main thread consumes
+    results via [poll] (non-blocking) or [poll_blocking].
 
     {1 Invariants under test}
 
@@ -15,19 +15,19 @@
 
     {2 [request] → [poll_blocking]}
     - For any [(cx, cy, cz)], [request t (cx, cy, cz)] eventually causes
-      [poll_blocking t] to return [Some ((cx, cy, cz), blocks)] where
-      [blocks] equals [Terrain.fill_chunk ~cx ~cy ~cz].
+      [poll_blocking t] to return [Some ((cx, cy, cz), blocks)] where [blocks]
+      equals [Terrain.fill_chunk ~cx ~cy ~cz].
     - When several distinct requests are made, results for all of them
       eventually come back.
 
     {2 Deduplication}
-    - Repeated [request] calls for the same coordinate while it is pending
-      do not produce duplicate results. After consuming the single result
-      via [poll], a fresh [request] for the same coordinate works again.
+    - Repeated [request] calls for the same coordinate while it is pending do
+      not produce duplicate results. After consuming the single result via
+      [poll], a fresh [request] for the same coordinate works again.
 
     {2 [pending]}
-    - After [request], [pending] returns [true] for that coordinate until
-      a matching [poll] consumes the result.
+    - After [request], [pending] returns [true] for that coordinate until a
+      matching [poll] consumes the result.
     - [pending] returns [false] for coordinates that were never requested. *)
 
 open OUnit2
@@ -39,23 +39,24 @@ open OUnit2
 let with_worker f =
   let w = Chunk_worker.create () in
   let finally () = Chunk_worker.destroy w in
-  (try
-     let r = f w in
-     finally ();
-     r
-   with e ->
-     finally ();
-     raise e)
+  try
+    let r = f w in
+    finally ();
+    r
+  with e ->
+    finally ();
+    raise e
 
 let array_equal eq a b =
   Array.length a = Array.length b
-  && (let n = Array.length a in
-      let i = ref 0 and ok = ref true in
-      while !ok && !i < n do
-        if not (eq a.(!i) b.(!i)) then ok := false;
-        incr i
-      done;
-      !ok)
+  &&
+  let n = Array.length a in
+  let i = ref 0 and ok = ref true in
+  while !ok && !i < n do
+    if not (eq a.(!i) b.(!i)) then ok := false;
+    incr i
+  done;
+  !ok
 
 (* ------------------------------------------------------------------ *)
 (*  Lifecycle                                                           *)
@@ -125,9 +126,9 @@ let test_multiple_requests_all_complete _ =
 (*  Deduplication                                                       *)
 (* ------------------------------------------------------------------ *)
 
-(** request(A) three times, then request(B). Worker is FIFO, so we should see
-    A then B, and crucially only ONE A even though we requested it three
-    times. After draining B, no further results should be pending. *)
+(** request(A) three times, then request(B). Worker is FIFO, so we should see A
+    then B, and crucially only ONE A even though we requested it three times.
+    After draining B, no further results should be pending. *)
 let test_request_dedup _ =
   with_worker (fun w ->
       Chunk_worker.request w (0, 0, 0);
@@ -137,12 +138,13 @@ let test_request_dedup _ =
       let r1 = Chunk_worker.poll_blocking w in
       let r2 = Chunk_worker.poll_blocking w in
       let coord_of = function
-        | Some ((c, _ : (int * int * int) * _)) -> c
+        | Some ((c, _) : (int * int * int) * _) -> c
         | None -> assert_failure "unexpected None"
       in
       let c1 = coord_of r1 and c2 = coord_of r2 in
       let got = List.sort compare [ c1; c2 ] in
-      assert_equal ~msg:"exactly the two unique coords" [ (0, 0, 0); (1, 0, 0) ]
+      assert_equal ~msg:"exactly the two unique coords"
+        [ (0, 0, 0); (1, 0, 0) ]
         got;
       (* both unique requests processed; no third result should exist *)
       assert_equal ~msg:"queue empty after dedup" None (Chunk_worker.poll w))
@@ -176,8 +178,7 @@ let test_pending_clears_after_poll _ =
 
 let test_poll_empty_returns_none _ =
   with_worker (fun w ->
-      assert_equal ~msg:"poll on empty queue is None" None
-        (Chunk_worker.poll w))
+      assert_equal ~msg:"poll on empty queue is None" None (Chunk_worker.poll w))
 
 let tests =
   "Chunk_worker"
@@ -187,7 +188,8 @@ let tests =
          "single_request_correct_blocks"
          >:: test_single_request_returns_correct_blocks;
          "negative_coord" >:: test_negative_coord;
-         "multiple_requests_all_complete" >:: test_multiple_requests_all_complete;
+         "multiple_requests_all_complete"
+         >:: test_multiple_requests_all_complete;
          "request_dedup" >:: test_request_dedup;
          "request_after_consume" >:: test_request_after_consume;
          "pending_false_when_never_requested"

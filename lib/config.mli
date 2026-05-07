@@ -53,6 +53,6 @@ val chunk_y_min : int
 (** highest chunk y-index that can contain non-air blocks *)
 val chunk_y_max : int
 
-(** maximum number of new chunks to generate (and mesh) per frame, used to
-    cap the per-frame stall when streaming the world *)
+(** maximum number of new chunks to generate (and mesh) per frame, used to cap
+    the per-frame stall when streaming the world *)
 val chunk_load_budget : int

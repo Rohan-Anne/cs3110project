@@ -41,8 +41,7 @@ let add_chunk world chunk =
   let key = (Chunk.x chunk, Chunk.y chunk, Chunk.z chunk) in
   Hashtbl.replace world.chunks key chunk
 
-let remove_chunk world cx cy cz =
-  Hashtbl.remove world.chunks (cx, cy, cz)
+let remove_chunk world cx cy cz = Hashtbl.remove world.chunks (cx, cy, cz)
 
 let block_color = function
   | Block.Grass -> Color.make 0.2 0.6 0.1

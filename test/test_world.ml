@@ -43,10 +43,10 @@
     {2 [add_chunk] / [remove_chunk]}
     - [add_chunk] inserts a chunk under its declared coordinates and is
       observable via [get_chunk].
-    - Adding a chunk at a coordinate that already has one replaces the
-      existing entry; the loaded count does not grow.
-    - [remove_chunk] removes the chunk; subsequent [get_chunk] returns
-      [None] and [get_block] reverts to [Air].
+    - Adding a chunk at a coordinate that already has one replaces the existing
+      entry; the loaded count does not grow.
+    - [remove_chunk] removes the chunk; subsequent [get_chunk] returns [None]
+      and [get_block] reverts to [Air].
     - [remove_chunk] on an unloaded coordinate is a no-op (no exception). *)
 
 open OUnit2

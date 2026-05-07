@@ -12,14 +12,13 @@ type t = {
 }
 
 (* AF: A [t] value represents a producer/consumer pipeline backed by a single
-        worker [Domain]. The main thread enqueues coordinates into [requests]
-        and reads finished [(coord, blocks)] pairs out of [results]. The
-        worker pops from [requests], runs [Terrain.fill_chunk], and pushes
-        into [results]. [pending_set] tracks coordinates that are queued,
-        being generated, or waiting to be consumed.
-   RI: All accesses to [requests], [results], and [pending_set] are made
-        while [mutex] is held. [Atomic.get stop] is [true] iff [destroy]
-        has been called. *)
+   worker [Domain]. The main thread enqueues coordinates into [requests] and
+   reads finished [(coord, blocks)] pairs out of [results]. The worker pops from
+   [requests], runs [Terrain.fill_chunk], and pushes into [results].
+   [pending_set] tracks coordinates that are queued, being generated, or waiting
+   to be consumed. RI: All accesses to [requests], [results], and [pending_set]
+   are made while [mutex] is held. [Atomic.get stop] is [true] iff [destroy] has
+   been called. *)
 
 let create () =
   let mutex = Mutex.create () in
@@ -53,16 +52,7 @@ let create () =
           end
         done)
   in
-  {
-    mutex;
-    request_cv;
-    result_cv;
-    requests;
-    results;
-    pending_set;
-    stop;
-    domain;
-  }
+  { mutex; request_cv; result_cv; requests; results; pending_set; stop; domain }
 
 let request t coord =
   Mutex.lock t.mutex;

@@ -63,9 +63,29 @@ let create ~positions ~colors =
   Gl.bind_buffer Gl.array_buffer 0;
   { vao; vertex_buffer; color_buffer; count = Array.length positions / 3 }
 
+let update t ~positions ~colors =
+  let vertex_data = Gl_utils.float32_array positions in
+  let color_data = Gl_utils.float32_array colors in
+  (* reuse existing VBOs,*)
+  Gl.bind_buffer Gl.array_buffer t.vertex_buffer;
+  Gl.buffer_data Gl.array_buffer
+    (Gl.bigarray_byte_size vertex_data)
+    (Some vertex_data) Gl.dynamic_draw;
+  Gl.bind_buffer Gl.array_buffer t.color_buffer;
+  Gl.buffer_data Gl.array_buffer
+    (Gl.bigarray_byte_size color_data)
+    (Some color_data) Gl.dynamic_draw;
+  Gl.bind_buffer Gl.array_buffer 0;
+  (* VAO isnt rebound bc attribute layout is unchanged *)
+  { t with count = Array.length positions / 3 }
+
 let draw t =
   Gl.bind_vertex_array t.vao;
   Gl.draw_arrays Gl.triangles 0 t.count
+
+let draw_lines t =
+  Gl.bind_vertex_array t.vao;
+  Gl.draw_arrays Gl.lines 0 t.count
 
 let destroy t =
   Gl_utils.with_int (Gl.delete_vertex_arrays 1) t.vao;

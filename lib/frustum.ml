@@ -8,12 +8,11 @@ type plane = {
 type t = plane array
 
 (* AF: A [t] value [planes] represents the view frustum as the intersection of
-        the half-spaces defined by [planes.(0)..planes.(5)]. For each plane
-        [{a; b; c; d}], a point [(x, y, z)] is inside the half-space when
-        [a*x + b*y + c*z + d >= 0]. The 6 planes are, in order: left, right,
-        bottom, top, near, far.
-   RI: [Array.length planes = 6] and for every plane [(a, b, c)] is a unit
-        vector (or all zero, in the degenerate case of a singular MVP). *)
+   the half-spaces defined by [planes.(0)..planes.(5)]. For each plane [{a; b;
+   c; d}], a point [(x, y, z)] is inside the half-space when [a*x + b*y + c*z +
+   d >= 0]. The 6 planes are, in order: left, right, bottom, top, near, far. RI:
+   [Array.length planes = 6] and for every plane [(a, b, c)] is a unit vector
+   (or all zero, in the degenerate case of a singular MVP). *)
 
 let normalize { a; b; c; d } =
   let len = sqrt ((a *. a) +. (b *. b) +. (c *. c)) in
@@ -36,17 +35,17 @@ let of_mvp m =
   let r3 = row m 3 in
   [|
     normalize (plus_ r3 r0);
-    (* left   *)
+    (* left *)
     normalize (minus_ r3 r0);
-    (* right  *)
+    (* right *)
     normalize (plus_ r3 r1);
     (* bottom *)
     normalize (minus_ r3 r1);
-    (* top    *)
+    (* top *)
     normalize (plus_ r3 r2);
-    (* near   *)
+    (* near *)
     normalize (minus_ r3 r2);
-    (* far    *)
+    (* far *)
   |]
 
 let intersects_aabb planes ~min ~max =
@@ -54,8 +53,8 @@ let intersects_aabb planes ~min ~max =
   let i = ref 0 in
   while (not !outside) && !i < 6 do
     let p = planes.(!i) in
-    (* p-vertex: corner of AABB farthest along plane normal. If even that
-       corner is on the negative side, the whole AABB is outside this plane. *)
+    (* p-vertex: corner of AABB farthest along plane normal. If even that corner
+       is on the negative side, the whole AABB is outside this plane. *)
     let px = if p.a >= 0.0 then max.Math3d.x else min.Math3d.x in
     let py = if p.b >= 0.0 then max.Math3d.y else min.Math3d.y in
     let pz = if p.c >= 0.0 then max.Math3d.z else min.Math3d.z in

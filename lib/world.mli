@@ -17,8 +17,8 @@ val set_block : t -> int -> int -> int -> Block.t -> unit
 (** generate a chunk at chunk coordinate [(cx, cy, cz)] and add it to [t] *)
 val generate_chunk : t -> cx:int -> cy:int -> cz:int -> unit
 
-(** [add_chunk world chunk] inserts [chunk] into [world] at its declared
-    chunk coordinate, replacing any prior chunk there. *)
+(** [add_chunk world chunk] inserts [chunk] into [world] at its declared chunk
+    coordinate, replacing any prior chunk there. *)
 val add_chunk : t -> Chunk.t -> unit
 
 (** [remove_chunk world cx cy cz] removes the chunk at [(cx, cy, cz)] from
