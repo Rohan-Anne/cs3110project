@@ -8,7 +8,11 @@ let crosshair_fragment_source = [%blob "shaders/crosshair.frag"]
 let hotbar_vertex_source = [%blob "shaders/hotbar.vert"]
 let hotbar_fragment_source = [%blob "shaders/hotbar.frag"]
 
-type hotbar = { hb_vao : int; hb_vbo : int; hb_shader : Shader.t }
+type hotbar = {
+  hb_vao : int;
+  hb_vbo : int;
+  hb_shader : Shader.t;
+}
 
 let block_display_color = function
   | Block.Stone -> (0.5, 0.5, 0.5)
@@ -20,24 +24,24 @@ let hotbar_quad_append buf x0 y0 x1 y1 r g b =
   Array.append buf
     [| x0; y0; r; g; b; x1; y0; r; g; b; x1; y1; r; g; b;
        x0; y0; r; g; b; x1; y1; r; g; b; x0; y1; r; g; b |]
+    [@@ocamlformat "disable"]
 
 let hotbar_verts held =
   let slot_s = 0.08 and gap = 0.01 and outline_pad = 0.007 in
   let y_bot = -0.92 and y_top = -0.84 in
   let slots = [| Block.Stone; Block.Dirt; Block.Grass |] in
   let n = Array.length slots in
-  let total_x = float_of_int n *. slot_s +. float_of_int (n - 1) *. gap in
-  let start_x = -. total_x /. 2.0 in
+  let total_x = (float_of_int n *. slot_s) +. (float_of_int (n - 1) *. gap) in
+  let start_x = -.total_x /. 2.0 in
   let buf = ref [||] in
-  Array.iteri (fun i block ->
-      let x0 = start_x +. float_of_int i *. (slot_s +. gap) in
+  Array.iteri
+    (fun i block ->
+      let x0 = start_x +. (float_of_int i *. (slot_s +. gap)) in
       let x1 = x0 +. slot_s in
       if block = held then
         buf :=
-          hotbar_quad_append !buf
-            (x0 -. outline_pad) (y_bot -. outline_pad)
-            (x1 +. outline_pad) (y_top +. outline_pad)
-            1.0 1.0 0.9;
+          hotbar_quad_append !buf (x0 -. outline_pad) (y_bot -. outline_pad)
+            (x1 +. outline_pad) (y_top +. outline_pad) 1.0 1.0 0.9;
       let r, g, b = block_display_color block in
       buf := hotbar_quad_append !buf x0 y_bot x1 y_top r g b)
     slots;
@@ -68,8 +72,9 @@ let draw_hotbar hb ~held ~aspect =
   Gl.bind_vertex_array hb.hb_vao;
   Gl.bind_buffer Gl.array_buffer hb.hb_vbo;
   let data = Gl_utils.float32_array verts in
-  Gl.buffer_data Gl.array_buffer (Gl.bigarray_byte_size data) (Some data)
-    Gl.dynamic_draw;
+  Gl.buffer_data Gl.array_buffer
+    (Gl.bigarray_byte_size data)
+    (Some data) Gl.dynamic_draw;
   Shader.use hb.hb_shader;
   Shader.set_uniform_float hb.hb_shader "aspect" aspect;
   Gl.draw_arrays Gl.triangles 0 n_verts;
@@ -220,7 +225,8 @@ let () =
           camera.pos <-
             { camera.pos with y = feet_y +. (Config.crouch_height -. 0.2) };
           is_crouching := true
-        end else if (not want_crouch) && was_crouching then begin
+        end
+        else if (not want_crouch) && was_crouching then begin
           (* try to stand: check headroom by sweeping upward *)
           let delta_y = Config.player_height -. Config.crouch_height in
           let crouched_box =
@@ -234,10 +240,10 @@ let () =
             camera.pos <-
               { camera.pos with y = feet_y +. (Config.player_height -. 0.2) };
             is_crouching := false
-          end else
-            is_crouching := true
-        end else
-          is_crouching := was_crouching);
+          end
+          else is_crouching := true
+        end
+        else is_crouching := was_crouching);
     let eff_height =
       if !is_crouching then Config.crouch_height else Config.player_height
     in
@@ -252,9 +258,10 @@ let () =
     | Survival ->
         (* gravity accumulates downward each frame *)
         vel_y := !vel_y -. (Config.gravity *. dt);
-        (* jump on rising edge of space, only when on the ground and not crouching *)
-        if space_now && (not !prev_space) && !on_ground && not !is_crouching then
-          vel_y := Config.jump_velocity;
+        (* jump on rising edge of space, only when on the ground and not
+           crouching *)
+        if space_now && (not !prev_space) && !on_ground && not !is_crouching
+        then vel_y := Config.jump_velocity;
         let eff_move_speed =
           if !is_crouching then Config.crouch_speed else Config.move_speed
         in
@@ -265,11 +272,11 @@ let () =
         let delta = Math3d.vec3 horiz.x (!vel_y *. dt) horiz.z in
         let box = Physics.at_position ~height:eff_height camera.pos in
         let actual = Physics.move world box delta in
-        (* sneak: prevent walking off edges.
-           Scans the full player width on the movement axis but only the
-           center column on the stationary axis, so corners don't let you
-           slip off while the full-width scan gives enough overhang (~0.3
-           blocks) for the DDA to see the side face when bridging. *)
+        (* sneak: prevent walking off edges. Scans the full player width on the
+           movement axis but only the center column on the stationary axis, so
+           corners don't let you slip off while the full-width scan gives enough
+           overhang (~0.3 blocks) for the DDA to see the side face when
+           bridging. *)
         let actual =
           if !is_crouching && !on_ground then begin
             let ifloor f = Float.to_int (floor f) in
@@ -298,17 +305,14 @@ let () =
               done;
               !found
             in
-            let safe_x =
-              has_ground_x (camera.pos.x +. actual.x) camera.pos.z
-            in
-            let safe_z =
-              has_ground_z camera.pos.x (camera.pos.z +. actual.z)
-            in
+            let safe_x = has_ground_x (camera.pos.x +. actual.x) camera.pos.z in
+            let safe_z = has_ground_z camera.pos.x (camera.pos.z +. actual.z) in
             Math3d.vec3
               (if safe_x then actual.x else 0.0)
               actual.y
               (if safe_z then actual.z else 0.0)
-          end else actual
+          end
+          else actual
         in
         (* detect floor collision: wanted to go down but were blocked *)
         if delta.y < -1e-6 && actual.y > delta.y +. 1e-6 then begin
@@ -368,7 +372,8 @@ let () =
     if mr_now && not !prev_mouse_right then begin
       try_place ();
       place_cooldown := 0.5
-    end else if mr_now && !place_cooldown = 0.0 then begin
+    end
+    else if mr_now && !place_cooldown = 0.0 then begin
       try_place ();
       place_cooldown := 0.2
     end;

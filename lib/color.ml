@@ -5,8 +5,9 @@ type t = {
   b : float;
 }
 
-(* AF: [{r; g; b}] represents the RGB color with red channel [r], green
-        channel [g], and blue channel [b], each a linear intensity in [0, 1].
+(* AF: [{r; g; b}] represents the RGB color with red channel [r], green channel
+   [g], and blue channel [b], each a linear intensity in [0, 1].
+
    RI: [0.0 <= r <= 1.0], [0.0 <= g <= 1.0], [0.0 <= b <= 1.0]. *)
 
 let make r g b = { r; g; b }

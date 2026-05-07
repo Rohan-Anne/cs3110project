@@ -7,13 +7,14 @@ type t = {
 }
 
 (* AF: [{program; uniform_cache}] represents a linked OpenGL shader program.
-        [program] is the OpenGL program object name. [uniform_cache] is a
-        memoization table mapping uniform name strings to their OpenGL location
-        integers; it is a performance cache only and does not affect the logical
-        identity of the shader.
+   [program] is the OpenGL program object name. [uniform_cache] is a memoization
+   table mapping uniform name strings to their OpenGL location integers; it is a
+   performance cache only and does not affect the logical identity of the
+   shader.
+
    RI: [program] is a non-zero OpenGL program name that has been successfully
-        linked. For every [(name -> loc)] in [uniform_cache], [loc] equals
-        [Gl.get_uniform_location program name]. *)
+   linked. For every [(name -> loc)] in [uniform_cache], [loc] equals
+   [Gl.get_uniform_location program name]. *)
 
 (* error handling util *)
 let fail kind log = failwith (Printf.sprintf "%s failed:\n%s" kind log)

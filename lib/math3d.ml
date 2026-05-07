@@ -1,7 +1,8 @@
 type mat4 = float array
 
 (* AF: A [mat4] value [m] represents the 4×4 matrix stored in column-major
-        order: the element at row [r], column [c] is [m.(c * 4 + r)].
+   order: the element at row [r], column [c] is [m.(c * 4 + r)].
+
    RI: [Array.length m = 16]. *)
 
 type vec3 = {
@@ -10,8 +11,9 @@ type vec3 = {
   z : float;
 }
 
-(* AF: [{x; y; z}] represents the mathematical vector (x, y, z) ∈ ℝ³,
-        used for both points and directions in 3D world space.
+(* AF: [{x; y; z}] represents the mathematical vector (x, y, z) ∈ ℝ³, used for
+   both points and directions in 3D world space.
+
    RI: [x], [y], and [z] are finite floats (not NaN, not infinity). *)
 
 let vec3 x y z = { x; y; z }

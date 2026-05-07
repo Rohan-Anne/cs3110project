@@ -7,11 +7,12 @@ type t = {
 }
 
 (* AF: [{pos; yaw; pitch}] represents a first-person camera located at world
-        position [pos], rotated horizontally by [yaw] radians around the Y-axis
-        and vertically by [pitch] radians around the local X-axis (positive
-        pitch looks up).
-   RI: [pitch] is in the closed interval
-        [[-Config.pitch_limit, Config.pitch_limit]]. *)
+   position [pos], rotated horizontally by [yaw] radians around the Y-axis and
+   vertically by [pitch] radians around the local X-axis (positive pitch looks
+   up).
+
+   RI: [pitch] is in the closed interval [[-Config.pitch_limit,
+   Config.pitch_limit]]. *)
 
 let create ~pos ~yaw ~pitch = { pos; yaw; pitch }
 

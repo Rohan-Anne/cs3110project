@@ -6,8 +6,8 @@ type aabb = {
 }
 
 (* AF: [{min; max}] represents the axis-aligned bounding box whose corner of
-        least coordinates is [min] and whose corner of greatest coordinates is
-        [max].
+   least coordinates is [min] and whose corner of greatest coordinates is [max].
+
    RI: [min.x <= max.x], [min.y <= max.y], [min.z <= max.z]. *)
 
 let at_position ?(height = Config.player_height) pos =
@@ -128,8 +128,8 @@ let has_ground_below world box =
   (* Subtract a tiny epsilon so a center exactly on a block boundary is treated
      as still belonging to the block behind it, letting the player reach the
      exact edge (needed for crouched bridge-building). *)
-  let bx = ifloor ((box.min.x +. box.max.x) /. 2.0 -. 1e-4) in
-  let bz = ifloor ((box.min.z +. box.max.z) /. 2.0 -. 1e-4) in
+  let bx = ifloor (((box.min.x +. box.max.x) /. 2.0) -. 1e-4) in
+  let bz = ifloor (((box.min.z +. box.max.z) /. 2.0) -. 1e-4) in
   World.get_block world bx by bz <> Block.Air
 
 let move world box delta =

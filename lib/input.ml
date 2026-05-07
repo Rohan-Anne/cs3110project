@@ -12,12 +12,13 @@ type t = {
 }
 
 (* AF: [{quit; resized; mouse_dx; mouse_dy; keys_down}] represents the input
-        state accumulated since the last call to [poll]. [quit] is true iff
-        the application should exit. [resized] is true iff the window was
-        resized during the last poll. [mouse_dx] and [mouse_dy] are the total
-        mouse displacement (in pixels) accumulated during the last poll.
-        [keys_down] maps each scancode seen so far to [true] if it is
-        currently held down, or [false] if it has been released.
+   state accumulated since the last call to [poll]. [quit] is true iff the
+   application should exit. [resized] is true iff the window was resized during
+   the last poll. [mouse_dx] and [mouse_dy] are the total mouse displacement (in
+   pixels) accumulated during the last poll. [keys_down] maps each scancode seen
+   so far to [true] if it is currently held down, or [false] if it has been
+   released.
+
    RI: None — all fields are freely mutable and always well-typed. *)
 
 let create () =
