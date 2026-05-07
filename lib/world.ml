@@ -145,9 +145,9 @@ let mesh_chunk world chunk =
 
 let iter world f = Hashtbl.iter (fun _ c -> f c) world.chunks
 
-(* DDA voxel raycast. Returns Some (bx, by, bz, nx, ny, nz) where (bx,by,bz)
-   is the first solid block hit and (nx,ny,nz) is the face normal pointing
-   back toward the ray origin. Returns None if no block within max_dist. *)
+(* DDA voxel raycast. Returns Some (bx, by, bz, nx, ny, nz) where (bx,by,bz) is
+   the first solid block hit and (nx,ny,nz) is the face normal pointing back
+   toward the ray origin. Returns None if no block within max_dist. *)
 let raycast world ~origin ~dir ~max_dist =
   let open Math3d in
   let ifloor f = Float.to_int (floor f) in
