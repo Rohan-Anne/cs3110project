@@ -9,10 +9,16 @@ let () =
   let player = Player.create () in
   Window.enable_depth_test ();
   let input = Input.create () in
-  (* spawn above the centre of the world; high enough to never spawn inside
-     terrain *)
+  (* spawn at the surface of the world of the world *)
+  let spawn_x = 0 and spawn_z = 0 in
+  let eye_above_feet = Config.player_height -. 0.2 in
+  let spawn_y =
+    Float.of_int (Terrain.height_at spawn_x spawn_z + 1) +. eye_above_feet
+  in
   let camera =
-    Camera.create ~pos:(Math3d.vec3 8.0 30.0 8.0) ~yaw:0.0 ~pitch:(-0.3)
+    Camera.create
+      ~pos:(Math3d.vec3 (Float.of_int spawn_x) spawn_y (Float.of_int spawn_z))
+      ~yaw:0.0 ~pitch:0.0
   in
   Chunk_manager.wait_for_spawn chunks world worker ~camera;
   Window.capture_mouse true;
