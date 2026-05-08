@@ -55,6 +55,16 @@ let update_viewport t =
   let w, h = Sdl.gl_get_drawable_size t.window in
   Gl.viewport 0 0 w h
 
+let clear () = Gl.clear Gl.(color_buffer_bit lor depth_buffer_bit)
+let enable_depth_test () = Gl.enable Gl.depth_test
+let ticks () = Int32.to_float (Sdl.get_ticks ())
+let drawable_size t = Sdl.gl_get_drawable_size t.window
+
+let capture_mouse enabled =
+  match Sdl.set_relative_mouse_mode enabled with
+  | Ok () -> ()
+  | Error (`Msg e) -> prerr_endline ("warning: relative mouse mode failed: " ^ e)
+
 let destroy t =
   Sdl.gl_delete_context t.gl_context;
   Sdl.destroy_window t.window;

@@ -3,4 +3,13 @@
  (wrapped false)
  (libraries tsdl tgls.tgl3)
  (instrumentation
-  (backend bisect_ppx)))
+  (backend bisect_ppx))
+ (preprocess
+  (pps ppx_blob))
+ (preprocessor_deps
+  (file shaders/vertex.vert)
+  (file shaders/fragment.frag)
+  (file shaders/crosshair.vert)
+  (file shaders/crosshair.frag)
+  (file shaders/hotbar.vert)
+  (file shaders/hotbar.frag)))

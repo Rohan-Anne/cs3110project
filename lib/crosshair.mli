@@ -2,7 +2,7 @@
 type t
 
 (** upload geometry to the GPU and compile the crosshair shader *)
-val create : vertex_source:string -> fragment_source:string -> t
+val create : unit -> t
 
 (** draw the crosshair at the center of the screen; [aspect] is width/height *)
 val draw : t -> float -> unit

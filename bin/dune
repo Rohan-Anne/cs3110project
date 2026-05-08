@@ -1,13 +1,4 @@
 (executable
  (public_name ocaml-voxel)
  (name main)
- (libraries ocaml_voxel tsdl tgls.tgl3)
- (preprocess
-  (pps ppx_blob))
- (preprocessor_deps
-  (file shaders/fragment.frag)
-  (file shaders/vertex.vert)
-  (file shaders/crosshair.vert)
-  (file shaders/crosshair.frag)
-  (file shaders/hotbar.vert)
-  (file shaders/hotbar.frag)))
+ (libraries ocaml_voxel))

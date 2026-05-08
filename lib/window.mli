@@ -17,5 +17,20 @@ val swap : t -> unit
     event *)
 val update_viewport : t -> unit
 
+(** clear the color and depth buffers, called at the start of each frame *)
+val clear : unit -> unit
+
+(** enable depth testing; call once after window creation *)
+val enable_depth_test : unit -> unit
+
+(** current time in milliseconds as a float *)
+val ticks : unit -> float
+
+(** drawable framebuffer size in pixels; may differ from window size on HiDPI *)
+val drawable_size : t -> int * int
+
+(** enable or disable relative (captured) mouse mode *)
+val capture_mouse : bool -> unit
+
 (** delete the GL context, destroy the window, and shut down SDL *)
 val destroy : t -> unit

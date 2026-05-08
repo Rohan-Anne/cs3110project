@@ -7,7 +7,10 @@ type t = {
   shader : Shader.t;
 }
 
-let create ~vertex_source ~fragment_source =
+let vertex_source = [%blob "shaders/crosshair.vert"]
+let fragment_source = [%blob "shaders/crosshair.frag"]
+
+let create () =
   (* half-length and half-thickness in screen-height NDC units *)
   let sz = 0.025 and th = 0.002 in
   let verts =
