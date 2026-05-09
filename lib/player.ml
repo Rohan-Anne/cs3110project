@@ -249,82 +249,52 @@ let update t world camera input chunk_manager ~dt =
       let x0 = Float.of_int bx -. eps and x1 = Float.of_int bx +. 1.0 +. eps in
       let y0 = Float.of_int by -. eps and y1 = Float.of_int by +. 1.0 +. eps in
       let z0 = Float.of_int bz -. eps and z1 = Float.of_int bz +. 1.0 +. eps in
-      let positions =
+      (* 8 cube corners, indexed 0..7. bit pattern: bit0=x, bit1=y, bit2=z *)
+      let corners =
         [|
-          x0;
-          y0;
-          z0;
-          x1;
-          y0;
-          z0;
-          x1;
-          y0;
-          z0;
-          x1;
-          y0;
-          z1;
-          x1;
-          y0;
-          z1;
-          x0;
-          y0;
-          z1;
-          x0;
-          y0;
-          z1;
-          x0;
-          y0;
-          z0;
-          x0;
-          y1;
-          z0;
-          x1;
-          y1;
-          z0;
-          x1;
-          y1;
-          z0;
-          x1;
-          y1;
-          z1;
-          x1;
-          y1;
-          z1;
-          x0;
-          y1;
-          z1;
-          x0;
-          y1;
-          z1;
-          x0;
-          y1;
-          z0;
-          x0;
-          y0;
-          z0;
-          x0;
-          y1;
-          z0;
-          x1;
-          y0;
-          z0;
-          x1;
-          y1;
-          z0;
-          x1;
-          y0;
-          z1;
-          x1;
-          y1;
-          z1;
-          x0;
-          y0;
-          z1;
-          x0;
-          y1;
-          z1;
+          (x0, y0, z0);
+          (x1, y0, z0);
+          (x0, y1, z0);
+          (x1, y1, z0);
+          (x0, y0, z1);
+          (x1, y0, z1);
+          (x0, y1, z1);
+          (x1, y1, z1);
         |]
       in
+      (* 12 edges of the cube as pairs of corner indices *)
+      let edges =
+        [|
+          (* bottom face *)
+          (0, 1);
+          (1, 5);
+          (5, 4);
+          (4, 0);
+          (* top face *)
+          (2, 3);
+          (3, 7);
+          (7, 6);
+          (6, 2);
+          (* verticals *)
+          (0, 2);
+          (1, 3);
+          (5, 7);
+          (4, 6);
+        |]
+      in
+      let positions = Array.make (Array.length edges * 6) 0.0 in
+      Array.iteri
+        (fun i (a, b) ->
+          let xa, ya, za = corners.(a) in
+          let xb, yb, zb = corners.(b) in
+          let o = i * 6 in
+          positions.(o) <- xa;
+          positions.(o + 1) <- ya;
+          positions.(o + 2) <- za;
+          positions.(o + 3) <- xb;
+          positions.(o + 4) <- yb;
+          positions.(o + 5) <- zb)
+        edges;
       let colors = Array.make (Array.length positions) 0.0 in
       t.selection_buf <-
         Some

@@ -274,39 +274,28 @@ let iter world f = Hashtbl.iter (fun _ c -> f c) world.chunks
 let raycast world ~origin ~dir ~max_dist =
   let open Math3d in
   let ifloor f = Float.to_int (floor f) in
+  (* distance along the ray to the next integer grid plane on this axis *)
+  let init_t_max o d b =
+    if Float.abs d < 1e-9 then Float.infinity
+    else if d > 0.0 then (Float.of_int (b + 1) -. o) /. d
+    else (Float.of_int b -. o) /. d
+  in
+  (* distance along the ray to traverse one full block on this axis *)
+  let init_td d =
+    if Float.abs d < 1e-9 then Float.infinity else Float.abs (1.0 /. d)
+  in
   let bx = ref (ifloor origin.x) in
   let by = ref (ifloor origin.y) in
   let bz = ref (ifloor origin.z) in
   let sx = if dir.x >= 0.0 then 1 else -1 in
   let sy = if dir.y >= 0.0 then 1 else -1 in
   let sz = if dir.z >= 0.0 then 1 else -1 in
-  let t_max_x =
-    ref
-      (if Float.abs dir.x < 1e-9 then Float.infinity
-       else if dir.x > 0.0 then (Float.of_int (!bx + 1) -. origin.x) /. dir.x
-       else (Float.of_int !bx -. origin.x) /. dir.x)
-  in
-  let t_max_y =
-    ref
-      (if Float.abs dir.y < 1e-9 then Float.infinity
-       else if dir.y > 0.0 then (Float.of_int (!by + 1) -. origin.y) /. dir.y
-       else (Float.of_int !by -. origin.y) /. dir.y)
-  in
-  let t_max_z =
-    ref
-      (if Float.abs dir.z < 1e-9 then Float.infinity
-       else if dir.z > 0.0 then (Float.of_int (!bz + 1) -. origin.z) /. dir.z
-       else (Float.of_int !bz -. origin.z) /. dir.z)
-  in
-  let td_x =
-    if Float.abs dir.x < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.x)
-  in
-  let td_y =
-    if Float.abs dir.y < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.y)
-  in
-  let td_z =
-    if Float.abs dir.z < 1e-9 then Float.infinity else Float.abs (1.0 /. dir.z)
-  in
+  let t_max_x = ref (init_t_max origin.x dir.x !bx) in
+  let t_max_y = ref (init_t_max origin.y dir.y !by) in
+  let t_max_z = ref (init_t_max origin.z dir.z !bz) in
+  let td_x = init_td dir.x in
+  let td_y = init_td dir.y in
+  let td_z = init_td dir.z in
   let nx = ref 0 and ny = ref 0 and nz = ref 0 in
   let result = ref None in
   while
