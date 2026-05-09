@@ -1,5 +1,5 @@
-(* This is the classic perlin noise relating to Perlin's reference permutation
-   table *)
+(* permutation table and noise routines adapted from Ken Perlin's improved noise
+   reference implementation, https://mrl.cs.nyu.edu/~perlin/noise/ *)
 let perm =
   [|
     151; 160; 137; 91; 90; 15; 131; 13; 201; 95; 96; 53; 194; 233; 7; 225; 140;
