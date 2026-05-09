@@ -31,6 +31,13 @@ open OUnit2
 
 let cs = Config.chunk_size
 
+(** printer for [Block.t] values, used in [assert_equal ~printer]. *)
+let pp_block = function
+  | Block.Air -> "Air"
+  | Block.Stone -> "Stone"
+  | Block.Dirt -> "Dirt"
+  | Block.Grass -> "Grass"
+
 (* ------------------------------------------------------------------ *)
 (*  {1 height_at}                                                       *)
 (* ------------------------------------------------------------------ *)
@@ -51,7 +58,7 @@ let test_height_deterministic _ =
     for z = -5 to 5 do
       let h1 = Terrain.height_at x z in
       let h2 = Terrain.height_at x z in
-      assert_equal
+      assert_equal ~printer:string_of_int
         ~msg:(Printf.sprintf "height_at(%d,%d) deterministic" x z)
         h1 h2
     done
@@ -69,14 +76,16 @@ let test_height_is_int _ =
 
 let test_fill_chunk_size _ =
   let blocks = Terrain.fill_chunk ~cx:0 ~cy:0 ~cz:0 in
-  assert_equal ~msg:"cs³ blocks" (cs * cs * cs) (Array.length blocks)
+  assert_equal ~printer:string_of_int ~msg:"cs³ blocks"
+    (cs * cs * cs)
+    (Array.length blocks)
 
 let test_fill_chunk_size_other_coords _ =
   let cases = [ (1, 0, 1); (-1, 0, -1); (0, 2, 0) ] in
   List.iter
     (fun (cx, cy, cz) ->
       let b = Terrain.fill_chunk ~cx ~cy ~cz in
-      assert_equal
+      assert_equal ~printer:string_of_int
         ~msg:(Printf.sprintf "size at (%d,%d,%d)" cx cy cz)
         (cs * cs * cs)
         (Array.length b))
@@ -155,35 +164,35 @@ let test_fill_chunk_layering _ =
       (* Surface block *)
       if h >= 0 && h < cs then begin
         let idx = Chunk.index bx h bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "surface Grass at (%d,%d,%d)" bx h bz)
           Block.Grass blocks.(idx)
       end;
       (* One below surface → Dirt *)
       if h - 1 >= 0 && h - 1 < cs then begin
         let idx = Chunk.index bx (h - 1) bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "h-1 Dirt at (%d,%d,%d)" bx (h - 1) bz)
           Block.Dirt blocks.(idx)
       end;
       (* Three below surface still Dirt *)
       if h - 3 >= 0 && h - 3 < cs then begin
         let idx = Chunk.index bx (h - 3) bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "h-3 Dirt at (%d,%d,%d)" bx (h - 3) bz)
           Block.Dirt blocks.(idx)
       end;
       (* Four below surface → Stone *)
       if h - 4 >= 0 && h - 4 < cs then begin
         let idx = Chunk.index bx (h - 4) bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "h-4 Stone at (%d,%d,%d)" bx (h - 4) bz)
           Block.Stone blocks.(idx)
       end;
       (* One above surface → Air *)
       if h + 1 >= 0 && h + 1 < cs then begin
         let idx = Chunk.index bx (h + 1) bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "h+1 Air at (%d,%d,%d)" bx (h + 1) bz)
           Block.Air blocks.(idx)
       end
@@ -204,7 +213,7 @@ let test_fill_chunk_agrees_with_height_at _ =
       if h >= wy_min && h <= wy_max then begin
         let by = h - (cy * cs) in
         let idx = Chunk.index bx by bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "surface agreement at (%d,%d,%d)" bx by bz)
           Block.Grass blocks.(idx)
       end

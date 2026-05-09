@@ -47,8 +47,8 @@ let assert_v3 ?(eps = eps) ~msg (ex, ey, ez) (v : Math3d.vec3) =
   assert_feq ~eps ~msg:(msg ^ ".z") ez v.z
 
 let assert_m4 ?(eps = eps) ~msg (a : Math3d.mat4) (b : Math3d.mat4) =
-  assert_equal ~msg:"length 16" 16 (Array.length a);
-  assert_equal ~msg:"length 16" 16 (Array.length b);
+  assert_equal ~printer:string_of_int ~msg:"length 16" 16 (Array.length a);
+  assert_equal ~printer:string_of_int ~msg:"length 16" 16 (Array.length b);
   for i = 0 to 15 do
     assert_feq ~eps ~msg:(Printf.sprintf "%s[%d]" msg i) a.(i) b.(i)
   done
@@ -215,7 +215,8 @@ let test_normalize_idempotent _ =
 (* ------------------------------------------------------------------ *)
 
 let test_identity_length _ =
-  assert_equal ~msg:"16 elements" 16 (Array.length (Math3d.identity ()))
+  assert_equal ~printer:string_of_int ~msg:"16 elements" 16
+    (Array.length (Math3d.identity ()))
 
 let test_identity_diagonal _ =
   let m = Math3d.identity () in
@@ -344,7 +345,7 @@ let test_perspective_shape _ =
     Math3d.perspective ~fov_y_radians:(pi /. 3.0) ~aspect:1.0 ~near:0.1
       ~far:1000.0
   in
-  assert_equal ~msg:"16 elements" 16 (Array.length m);
+  assert_equal ~printer:string_of_int ~msg:"16 elements" 16 (Array.length m);
   assert_feq ~msg:"[11] = -1" (-1.0) m.(11);
   assert_feq ~msg:"[15] = 0" 0.0 m.(15)
 
@@ -378,7 +379,7 @@ let test_view_length _ =
     Math3d.view_from_camera ~position:(Math3d.vec3 0.0 0.0 0.0) ~yaw:0.0
       ~pitch:0.0
   in
-  assert_equal ~msg:"16 elements" 16 (Array.length v)
+  assert_equal ~printer:string_of_int ~msg:"16 elements" 16 (Array.length v)
 
 (** Different yaw values produce different view matrices. *)
 let test_view_differs_by_yaw _ =

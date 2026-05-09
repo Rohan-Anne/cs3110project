@@ -33,6 +33,13 @@ let cs = Config.chunk_size
 (*  Helpers                                                             *)
 (* ------------------------------------------------------------------ *)
 
+(** printer for [Block.t] values, used in [assert_equal ~printer]. *)
+let pp_block = function
+  | Block.Air -> "Air"
+  | Block.Stone -> "Stone"
+  | Block.Dirt -> "Dirt"
+  | Block.Grass -> "Grass"
+
 (** Create a chunk at world-grid position [(x,y,z)] filled entirely with
     [Block.Air]. *)
 let make_air_chunk ?(x = 0) ?(y = 0) ?(z = 0) () =
@@ -44,20 +51,23 @@ let make_air_chunk ?(x = 0) ?(y = 0) ?(z = 0) () =
 
 (** [index 0 0 0 = 0]. *)
 let test_index_origin _ =
-  assert_equal ~msg:"index(0,0,0) = 0" 0 (Chunk.index 0 0 0)
+  assert_equal ~printer:string_of_int ~msg:"index(0,0,0) = 0" 0
+    (Chunk.index 0 0 0)
 
 (** [index (cs-1) (cs-1) (cs-1) = cs³ - 1]. *)
 let test_index_max_corner _ =
   let expected = (cs * cs * cs) - 1 in
   let actual = Chunk.index (cs - 1) (cs - 1) (cs - 1) in
-  assert_equal ~msg:"index at max corner" expected actual
+  assert_equal ~printer:string_of_int ~msg:"index at max corner" expected actual
 
 (** The x-stride is 1: [index (x+1) y z - index x y z = 1]. *)
 let test_index_x_stride _ =
   for y = 0 to cs - 1 do
     for z = 0 to cs - 1 do
       let diff = Chunk.index 1 y z - Chunk.index 0 y z in
-      assert_equal ~msg:(Printf.sprintf "x-stride at y=%d z=%d" y z) 1 diff
+      assert_equal ~printer:string_of_int
+        ~msg:(Printf.sprintf "x-stride at y=%d z=%d" y z)
+        1 diff
     done
   done
 
@@ -66,7 +76,9 @@ let test_index_y_stride _ =
   for x = 0 to cs - 1 do
     for z = 0 to cs - 1 do
       let diff = Chunk.index x 1 z - Chunk.index x 0 z in
-      assert_equal ~msg:(Printf.sprintf "y-stride at x=%d z=%d" x z) cs diff
+      assert_equal ~printer:string_of_int
+        ~msg:(Printf.sprintf "y-stride at x=%d z=%d" x z)
+        cs diff
     done
   done
 
@@ -75,7 +87,7 @@ let test_index_z_stride _ =
   for x = 0 to cs - 1 do
     for y = 0 to cs - 1 do
       let diff = Chunk.index x y 1 - Chunk.index x y 0 in
-      assert_equal
+      assert_equal ~printer:string_of_int
         ~msg:(Printf.sprintf "z-stride at x=%d y=%d" x y)
         (cs * cs) diff
     done
@@ -97,7 +109,7 @@ let test_index_bijection _ =
   Array.sort compare sorted;
   (* After sorting, unique = all elements present once each *)
   let unique = Array.of_list (List.sort_uniq compare (Array.to_list indices)) in
-  assert_equal ~msg:"bijection: all indices unique"
+  assert_equal ~printer:string_of_int ~msg:"bijection: all indices unique"
     (cs * cs * cs)
     (Array.length unique)
 
@@ -120,7 +132,7 @@ let test_index_formula _ =
     for y = 0 to cs - 1 do
       for z = 0 to cs - 1 do
         let expected = x + (y * cs) + (z * cs * cs) in
-        assert_equal
+        assert_equal ~printer:string_of_int
           ~msg:(Printf.sprintf "formula at (%d,%d,%d)" x y z)
           expected (Chunk.index x y z)
       done
@@ -137,7 +149,7 @@ let test_initial_all_air _ =
   for x = 0 to cs - 1 do
     for y = 0 to cs - 1 do
       for z = 0 to cs - 1 do
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "initial Air at (%d,%d,%d)" x y z)
           Block.Air (Chunk.get c x y z)
       done
@@ -158,7 +170,7 @@ let test_set_then_get _ =
   List.iter
     (fun (x, y, z, b) ->
       Chunk.set c x y z b;
-      assert_equal
+      assert_equal ~printer:pp_block
         ~msg:(Printf.sprintf "set/get at (%d,%d,%d)" x y z)
         b (Chunk.get c x y z))
     cases
@@ -169,7 +181,7 @@ let test_overwrite _ =
   List.iter
     (fun b ->
       Chunk.set c 5 5 5 b;
-      assert_equal ~msg:"overwrite" b (Chunk.get c 5 5 5))
+      assert_equal ~printer:pp_block ~msg:"overwrite" b (Chunk.get c 5 5 5))
     [ Block.Stone; Block.Dirt; Block.Grass; Block.Air ]
 
 (** Setting every cell and immediately reading it back must succeed. *)
@@ -179,7 +191,7 @@ let test_set_get_all_cells _ =
     for y = 0 to cs - 1 do
       for z = 0 to cs - 1 do
         Chunk.set c x y z Block.Grass;
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "get after set at (%d,%d,%d)" x y z)
           Block.Grass (Chunk.get c x y z)
       done
@@ -195,16 +207,20 @@ let test_set_get_all_cells _ =
 let test_no_aliasing_adjacent _ =
   let c = make_air_chunk () in
   Chunk.set c 0 0 0 Block.Stone;
-  assert_equal ~msg:"(1,0,0) unaffected" Block.Air (Chunk.get c 1 0 0);
-  assert_equal ~msg:"(0,1,0) unaffected" Block.Air (Chunk.get c 0 1 0);
-  assert_equal ~msg:"(0,0,1) unaffected" Block.Air (Chunk.get c 0 0 1)
+  assert_equal ~printer:pp_block ~msg:"(1,0,0) unaffected" Block.Air
+    (Chunk.get c 1 0 0);
+  assert_equal ~printer:pp_block ~msg:"(0,1,0) unaffected" Block.Air
+    (Chunk.get c 0 1 0);
+  assert_equal ~printer:pp_block ~msg:"(0,0,1) unaffected" Block.Air
+    (Chunk.get c 0 0 1)
 
 (** Writing to one corner must leave the opposite corner unchanged. *)
 let test_no_aliasing_corners _ =
   let c = make_air_chunk () in
   Chunk.set c 0 0 0 Block.Dirt;
   let far = cs - 1 in
-  assert_equal ~msg:"far corner unaffected" Block.Air (Chunk.get c far far far)
+  assert_equal ~printer:pp_block ~msg:"far corner unaffected" Block.Air
+    (Chunk.get c far far far)
 
 (** When every cell has a unique block written (by alternating Stone/Dirt),
     reading back confirms no value leaked into neighbouring cells. *)
@@ -225,7 +241,7 @@ let test_no_aliasing_full_grid _ =
         let expected =
           if (x + y + z) mod 2 = 0 then Block.Stone else Block.Dirt
         in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "checkerboard at (%d,%d,%d)" x y z)
           expected (Chunk.get c x y z)
       done
@@ -242,30 +258,30 @@ let test_coords_positive _ =
   let c =
     Chunk.create ~x:3 ~y:5 ~z:7 ~blocks:(Array.make (cs * cs * cs) Block.Air)
   in
-  assert_equal 3 (Chunk.x c);
-  assert_equal 5 (Chunk.y c);
-  assert_equal 7 (Chunk.z c)
+  assert_equal ~printer:string_of_int 3 (Chunk.x c);
+  assert_equal ~printer:string_of_int 5 (Chunk.y c);
+  assert_equal ~printer:string_of_int 7 (Chunk.z c)
 
 let test_coords_zero _ =
   let c = make_air_chunk () in
-  assert_equal 0 (Chunk.x c);
-  assert_equal 0 (Chunk.y c);
-  assert_equal 0 (Chunk.z c)
+  assert_equal ~printer:string_of_int 0 (Chunk.x c);
+  assert_equal ~printer:string_of_int 0 (Chunk.y c);
+  assert_equal ~printer:string_of_int 0 (Chunk.z c)
 
 let test_coords_negative _ =
   let c = make_air_chunk ~x:(-4) ~y:(-1) ~z:(-9) () in
-  assert_equal (-4) (Chunk.x c);
-  assert_equal (-1) (Chunk.y c);
-  assert_equal (-9) (Chunk.z c)
+  assert_equal ~printer:string_of_int (-4) (Chunk.x c);
+  assert_equal ~printer:string_of_int (-1) (Chunk.y c);
+  assert_equal ~printer:string_of_int (-9) (Chunk.z c)
 
 (** Coordinates are independent: changing one does not affect the others. *)
 let test_coords_independent _ =
   let c =
     Chunk.create ~x:10 ~y:20 ~z:30 ~blocks:(Array.make (cs * cs * cs) Block.Air)
   in
-  assert_equal 10 (Chunk.x c);
-  assert_equal 20 (Chunk.y c);
-  assert_equal 30 (Chunk.z c)
+  assert_equal ~printer:string_of_int 10 (Chunk.x c);
+  assert_equal ~printer:string_of_int 20 (Chunk.y c);
+  assert_equal ~printer:string_of_int 30 (Chunk.z c)
 
 (* ------------------------------------------------------------------ *)
 (*  {1 create with pre-filled block array}                             *)
@@ -283,7 +299,7 @@ let test_create_with_data _ =
       for z = 0 to cs - 1 do
         let i = Chunk.index x y z in
         let expected = if i mod 2 = 0 then Block.Stone else Block.Dirt in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "data at (%d,%d,%d)" x y z)
           expected (Chunk.get c x y z)
       done

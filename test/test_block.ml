@@ -35,6 +35,9 @@ let name = function
   | Block.Dirt -> "Dirt"
   | Block.Grass -> "Grass"
 
+(** printer for [Block.t] values, reused as [~printer:pp_block]. *)
+let pp_block = name
+
 (* ------------------------------------------------------------------ *)
 (*  {1 Distinctness: every pair of different variants is inequal}       *)
 (* ------------------------------------------------------------------ *)
@@ -56,15 +59,17 @@ let test_dirt_ne_grass _ =
 (*  {1 Reflexivity: every variant equals itself}                        *)
 (* ------------------------------------------------------------------ *)
 
-let test_air_eq_air _ = assert_equal ~msg:"Air = Air" Block.Air Block.Air
+let test_air_eq_air _ =
+  assert_equal ~printer:pp_block ~msg:"Air = Air" Block.Air Block.Air
 
 let test_stone_eq_stone _ =
-  assert_equal ~msg:"Stone = Stone" Block.Stone Block.Stone
+  assert_equal ~printer:pp_block ~msg:"Stone = Stone" Block.Stone Block.Stone
 
-let test_dirt_eq_dirt _ = assert_equal ~msg:"Dirt = Dirt" Block.Dirt Block.Dirt
+let test_dirt_eq_dirt _ =
+  assert_equal ~printer:pp_block ~msg:"Dirt = Dirt" Block.Dirt Block.Dirt
 
 let test_grass_eq_grass _ =
-  assert_equal ~msg:"Grass = Grass" Block.Grass Block.Grass
+  assert_equal ~printer:pp_block ~msg:"Grass = Grass" Block.Grass Block.Grass
 
 (* ------------------------------------------------------------------ *)
 (*  {1 Exhaustive pattern matching}                                     *)
@@ -75,7 +80,8 @@ let test_names _ =
   let variants = [ Block.Air; Block.Stone; Block.Dirt; Block.Grass ] in
   let expected = [ "Air"; "Stone"; "Dirt"; "Grass" ] in
   List.iter2
-    (fun block exp -> assert_equal ~msg:("name of " ^ exp) exp (name block))
+    (fun block exp ->
+      assert_equal ~printer:Fun.id ~msg:("name of " ^ exp) exp (name block))
     variants expected
 
 (* ------------------------------------------------------------------ *)
@@ -97,9 +103,11 @@ let test_grass_solid _ = assert_bool "Grass is solid" (is_solid Block.Grass)
 
 let test_exactly_four_variants _ =
   let all = [ Block.Air; Block.Stone; Block.Dirt; Block.Grass ] in
-  assert_equal ~msg:"list has 4 elements" 4 (List.length all);
+  assert_equal ~printer:string_of_int ~msg:"list has 4 elements" 4
+    (List.length all);
   let unique = List.sort_uniq compare all in
-  assert_equal ~msg:"all 4 are distinct" 4 (List.length unique)
+  assert_equal ~printer:string_of_int ~msg:"all 4 are distinct" 4
+    (List.length unique)
 
 (* ------------------------------------------------------------------ *)
 (*  {1 Symmetry of inequality}                                          *)

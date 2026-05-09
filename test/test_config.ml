@@ -35,7 +35,8 @@ let assert_feq ~msg expected actual =
 (* ------------------------------------------------------------------ *)
 
 let test_chunk_size_value _ =
-  assert_equal ~msg:"chunk_size = 16" 16 Config.chunk_size
+  assert_equal ~printer:string_of_int ~msg:"chunk_size = 16" 16
+    Config.chunk_size
 
 let test_move_speed_value _ =
   assert_feq ~msg:"move_speed = 4.0" 4.0 Config.move_speed

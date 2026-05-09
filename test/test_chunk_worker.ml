@@ -36,6 +36,17 @@ open OUnit2
 (*  Helpers                                                             *)
 (* ------------------------------------------------------------------ *)
 
+(** printer for [(int * int * int)] coords. *)
+let pp_xyz (x, y, z) = Printf.sprintf "(%d, %d, %d)" x y z
+
+(** printer for a list of int triples. *)
+let pp_xyz_list lst = "[" ^ String.concat "; " (List.map pp_xyz lst) ^ "]"
+
+(** printer for results poll'd off the worker queue. *)
+let pp_poll_result = function
+  | None -> "None"
+  | Some ((cx, cy, cz), _) -> Printf.sprintf "Some ((%d, %d, %d), _)" cx cy cz
+
 let with_worker f =
   let w = Chunk_worker.create () in
   let finally () = Chunk_worker.destroy w in
@@ -84,7 +95,7 @@ let test_single_request_returns_correct_blocks _ =
       match Chunk_worker.poll_blocking w with
       | None -> assert_failure "poll_blocking returned None unexpectedly"
       | Some (got_coord, got_blocks) ->
-          assert_equal ~msg:"coord matches" coord got_coord;
+          assert_equal ~printer:pp_xyz ~msg:"coord matches" coord got_coord;
           let cx, cy, cz = coord in
           let want = Terrain.fill_chunk ~cx ~cy ~cz in
           assert_bool "blocks equal Terrain.fill_chunk"
@@ -97,7 +108,7 @@ let test_negative_coord _ =
       match Chunk_worker.poll_blocking w with
       | None -> assert_failure "no result"
       | Some (got_coord, got_blocks) ->
-          assert_equal coord got_coord;
+          assert_equal ~printer:pp_xyz coord got_coord;
           let cx, cy, cz = coord in
           assert_bool "blocks correct for negative coord"
             (array_equal ( = ) (Terrain.fill_chunk ~cx ~cy ~cz) got_blocks))
@@ -119,8 +130,8 @@ let test_multiple_requests_all_complete _ =
         coords;
       let sorted_got = List.sort compare !got in
       let sorted_expected = List.sort compare coords in
-      assert_equal ~msg:"all requested coords returned" sorted_expected
-        sorted_got)
+      assert_equal ~printer:pp_xyz_list ~msg:"all requested coords returned"
+        sorted_expected sorted_got)
 
 (* ------------------------------------------------------------------ *)
 (*  Deduplication                                                       *)
@@ -143,11 +154,12 @@ let test_request_dedup _ =
       in
       let c1 = coord_of r1 and c2 = coord_of r2 in
       let got = List.sort compare [ c1; c2 ] in
-      assert_equal ~msg:"exactly the two unique coords"
+      assert_equal ~printer:pp_xyz_list ~msg:"exactly the two unique coords"
         [ (0, 0, 0); (1, 0, 0) ]
         got;
       (* both unique requests processed; no third result should exist *)
-      assert_equal ~msg:"queue empty after dedup" None (Chunk_worker.poll w))
+      assert_equal ~printer:pp_poll_result ~msg:"queue empty after dedup" None
+        (Chunk_worker.poll w))
 
 (** After consuming a result, the same coordinate can be requested again and
     will produce a fresh result (pending_set has been cleared). *)
@@ -158,7 +170,7 @@ let test_request_after_consume _ =
       Chunk_worker.request w (5, 0, 5);
       match Chunk_worker.poll_blocking w with
       | None -> assert_failure "second request yielded no result"
-      | Some (c, _) -> assert_equal (5, 0, 5) c)
+      | Some (c, _) -> assert_equal ~printer:pp_xyz (5, 0, 5) c)
 
 (* ------------------------------------------------------------------ *)
 (*  pending predicate                                                   *)
@@ -178,7 +190,8 @@ let test_pending_clears_after_poll _ =
 
 let test_poll_empty_returns_none _ =
   with_worker (fun w ->
-      assert_equal ~msg:"poll on empty queue is None" None (Chunk_worker.poll w))
+      assert_equal ~printer:pp_poll_result ~msg:"poll on empty queue is None"
+        None (Chunk_worker.poll w))
 
 let tests =
   "Chunk_worker"

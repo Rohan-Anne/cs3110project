@@ -28,6 +28,13 @@ let assert_feq ?(eps = eps) ~msg expected actual =
     assert_failure
       (Printf.sprintf "%s: expected %.8f got %.8f" msg expected actual)
 
+(** printer for [Block.t] values. *)
+let pp_block = function
+  | Block.Air -> "Air"
+  | Block.Stone -> "Stone"
+  | Block.Dirt -> "Dirt"
+  | Block.Grass -> "Grass"
+
 (* ------------------------------------------------------------------ *)
 (*  {1 Terrain ↔ World consistency}                                     *)
 (* ------------------------------------------------------------------ *)
@@ -40,7 +47,7 @@ let test_terrain_world_surface_grass _ =
   let cs = Config.chunk_size in
   let h = Terrain.height_at 0 0 in
   if h >= 0 && h < cs then
-    assert_equal ~msg:"surface via world = Grass" Block.Grass
+    assert_equal ~printer:pp_block ~msg:"surface via world = Grass" Block.Grass
       (World.get_block w 0 h 0)
 
 (** One block below the surface must be [Dirt]. *)
@@ -50,7 +57,7 @@ let test_terrain_world_subsurface_dirt _ =
   let cs = Config.chunk_size in
   let h = Terrain.height_at 0 0 in
   if h - 1 >= 0 && h - 1 < cs then
-    assert_equal ~msg:"h-1 via world = Dirt" Block.Dirt
+    assert_equal ~printer:pp_block ~msg:"h-1 via world = Dirt" Block.Dirt
       (World.get_block w 0 (h - 1) 0)
 
 (** [fill_chunk] and [World.get_block] agree on the entire surface layer for a
@@ -65,7 +72,7 @@ let test_terrain_world_fill_agreement _ =
       if h >= 0 && h < cs then begin
         let expected = Block.Grass in
         let actual = World.get_block w bx h bz in
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "surface at (%d,%d)" bx bz)
           expected actual
       end
@@ -119,7 +126,8 @@ let test_physics_blocked_by_terrain _ =
     [Math3d.view_from_camera]). *)
 let test_camera_view_is_mat4 _ =
   let c = Camera.create ~pos:(Math3d.vec3 0.0 0.0 0.0) ~yaw:0.0 ~pitch:0.0 in
-  assert_equal ~msg:"view length" 16 (Array.length (Camera.view c))
+  assert_equal ~printer:string_of_int ~msg:"view length" 16
+    (Array.length (Camera.view c))
 
 (** At yaw = pitch = 0 and position = origin, [Camera.view] should match
     [Math3d.view_from_camera] called with the same arguments. *)
@@ -148,7 +156,7 @@ let test_world_patch_count _ =
   done;
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"3×3 patch = 9 chunks" 9 !count
+  assert_equal ~printer:string_of_int ~msg:"3×3 patch = 9 chunks" 9 !count
 
 (** Every chunk in the patch is accessible via [get_chunk]. *)
 let test_world_patch_accessible _ =
@@ -193,7 +201,7 @@ let test_noise_terrain_world_pipeline _ =
       assert_bool (Printf.sprintf "h(%d,%d) >= 1" bx bz) (h >= 1);
       assert_bool (Printf.sprintf "h(%d,%d) <= 10" bx bz) (h <= 10);
       if h >= 0 && h < cs then
-        assert_equal
+        assert_equal ~printer:pp_block
           ~msg:(Printf.sprintf "pipeline: surface (%d,%d)" bx bz)
           Block.Grass
           (World.get_block w bx h bz)

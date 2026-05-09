@@ -292,7 +292,7 @@ let test_ground_movement_w _ =
 
 let test_view_length _ =
   let m = Camera.view (make_cam ()) in
-  assert_equal ~msg:"16 elements" 16 (Array.length m)
+  assert_equal ~printer:string_of_int ~msg:"16 elements" 16 (Array.length m)
 
 let test_view_differs_by_yaw _ =
   let m1 = Camera.view (make_cam ~yaw:0.0 ()) in

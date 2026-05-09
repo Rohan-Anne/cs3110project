@@ -57,6 +57,24 @@ let cs = Config.chunk_size
 (*  Helpers                                                             *)
 (* ------------------------------------------------------------------ *)
 
+(** printer for [Block.t] values. *)
+let pp_block = function
+  | Block.Air -> "Air"
+  | Block.Stone -> "Stone"
+  | Block.Dirt -> "Dirt"
+  | Block.Grass -> "Grass"
+
+(** printer for [(int * int * int)] coords. *)
+let pp_xyz (x, y, z) = Printf.sprintf "(%d, %d, %d)" x y z
+
+(** printer for a list of int triples, used by iter coverage tests. *)
+let pp_xyz_list lst = "[" ^ String.concat "; " (List.map pp_xyz lst) ^ "]"
+
+(** printer for [Chunk.t option] - we only need to see whether it's None. *)
+let pp_chunk_opt = function
+  | None -> "None"
+  | Some _ -> "Some _"
+
 let fresh () = World.create ()
 
 let with_chunk ?(cx = 0) ?(cy = 0) ?(cz = 0) w =
@@ -71,7 +89,7 @@ let test_create_empty _ =
   let w = fresh () in
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"no chunks initially" 0 !count
+  assert_equal ~printer:string_of_int ~msg:"no chunks initially" 0 !count
 
 (* ------------------------------------------------------------------ *)
 (*  {1 Unloaded chunk behaviour}                                        *)
@@ -79,17 +97,19 @@ let test_create_empty _ =
 
 let test_get_block_unloaded _ =
   let w = fresh () in
-  assert_equal ~msg:"unloaded → Air" Block.Air (World.get_block w 100 100 100)
+  assert_equal ~printer:pp_block ~msg:"unloaded → Air" Block.Air
+    (World.get_block w 100 100 100)
 
 let test_get_chunk_none _ =
   let w = fresh () in
-  assert_equal ~msg:"get_chunk on empty → None" None (World.get_chunk w 9 9 9)
+  assert_equal ~printer:pp_chunk_opt ~msg:"get_chunk on empty → None" None
+    (World.get_chunk w 9 9 9)
 
 let test_set_block_unloaded_noop _ =
   let w = fresh () in
   (* Must not raise and the result should still be Air. *)
   World.set_block w 500 500 500 Block.Stone;
-  assert_equal ~msg:"still Air after no-op set" Block.Air
+  assert_equal ~printer:pp_block ~msg:"still Air after no-op set" Block.Air
     (World.get_block w 500 500 500)
 
 (* ------------------------------------------------------------------ *)
@@ -107,9 +127,9 @@ let test_generate_chunk_coords _ =
   match World.get_chunk w 3 (-1) 2 with
   | None -> assert_failure "chunk not found"
   | Some c ->
-      assert_equal 3 (Chunk.x c);
-      assert_equal (-1) (Chunk.y c);
-      assert_equal 2 (Chunk.z c)
+      assert_equal ~printer:string_of_int 3 (Chunk.x c);
+      assert_equal ~printer:string_of_int (-1) (Chunk.y c);
+      assert_equal ~printer:string_of_int 2 (Chunk.z c)
 
 let test_generate_multiple_chunks _ =
   let w = fresh () in
@@ -117,7 +137,7 @@ let test_generate_multiple_chunks _ =
   List.iter (fun (cx, cy, cz) -> World.generate_chunk w ~cx ~cy ~cz) coords;
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"4 chunks loaded" 4 !count
+  assert_equal ~printer:string_of_int ~msg:"4 chunks loaded" 4 !count
 
 let test_generate_duplicate_no_growth _ =
   let w = fresh () in
@@ -134,20 +154,23 @@ let test_generate_duplicate_no_growth _ =
 let test_set_then_get _ =
   let w = with_chunk (fresh ()) in
   World.set_block w 0 0 0 Block.Stone;
-  assert_equal ~msg:"get after set" Block.Stone (World.get_block w 0 0 0)
+  assert_equal ~printer:pp_block ~msg:"get after set" Block.Stone
+    (World.get_block w 0 0 0)
 
 let test_set_get_all_types _ =
   let w = with_chunk (fresh ()) in
   List.iter
     (fun b ->
       World.set_block w 0 0 0 b;
-      assert_equal ~msg:"round-trip" b (World.get_block w 0 0 0))
+      assert_equal ~printer:pp_block ~msg:"round-trip" b
+        (World.get_block w 0 0 0))
     [ Block.Stone; Block.Dirt; Block.Grass; Block.Air ]
 
 (** Underground block at y = 0 should be Stone (terrain invariant). *)
 let test_get_block_underground _ =
   let w = with_chunk (fresh ()) in
-  assert_equal ~msg:"underground = Stone" Block.Stone (World.get_block w 0 0 0)
+  assert_equal ~printer:pp_block ~msg:"underground = Stone" Block.Stone
+    (World.get_block w 0 0 0)
 
 (** Block at the chunk boundary (world x = chunk_size - 1) is accessible. *)
 let test_get_block_chunk_boundary _ =
@@ -168,7 +191,8 @@ let test_negative_world_coord _ =
   let w = fresh () in
   World.generate_chunk w ~cx:(-1) ~cy:0 ~cz:0;
   World.set_block w (-1) 0 0 Block.Grass;
-  assert_equal ~msg:"get at x=-1" Block.Grass (World.get_block w (-1) 0 0)
+  assert_equal ~printer:pp_block ~msg:"get at x=-1" Block.Grass
+    (World.get_block w (-1) 0 0)
 
 (** World x = cs maps to chunk cx = 1, local bx = 0. *)
 let test_cross_chunk_boundary _ =
@@ -176,14 +200,16 @@ let test_cross_chunk_boundary _ =
   World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
   World.generate_chunk w ~cx:1 ~cy:0 ~cz:0;
   World.set_block w cs 0 0 Block.Dirt;
-  assert_equal ~msg:"get at x=cs" Block.Dirt (World.get_block w cs 0 0)
+  assert_equal ~printer:pp_block ~msg:"get at x=cs" Block.Dirt
+    (World.get_block w cs 0 0)
 
 (** x = -cs maps to chunk cx = -1, local bx = 0. *)
 let test_negative_chunk_boundary _ =
   let w = fresh () in
   World.generate_chunk w ~cx:(-1) ~cy:0 ~cz:0;
   World.set_block w (-cs) 0 0 Block.Stone;
-  assert_equal ~msg:"get at x=-cs" Block.Stone (World.get_block w (-cs) 0 0)
+  assert_equal ~printer:pp_block ~msg:"get at x=-cs" Block.Stone
+    (World.get_block w (-cs) 0 0)
 
 (* ------------------------------------------------------------------ *)
 (*  {1 iter}                                                            *)
@@ -196,7 +222,7 @@ let test_iter_count _ =
   done;
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"3 chunks" 3 !count
+  assert_equal ~printer:string_of_int ~msg:"3 chunks" 3 !count
 
 let test_iter_visits_correct_coords _ =
   let w = fresh () in
@@ -206,7 +232,8 @@ let test_iter_visits_correct_coords _ =
   World.iter w (fun c -> found := (Chunk.x c, Chunk.y c, Chunk.z c) :: !found);
   let sorted_found = List.sort compare !found in
   let sorted_expected = List.sort compare expected in
-  assert_equal ~msg:"iter visits all coords" sorted_expected sorted_found
+  assert_equal ~printer:pp_xyz_list ~msg:"iter visits all coords"
+    sorted_expected sorted_found
 
 (* ------------------------------------------------------------------ *)
 (*  {1 mesh_chunk}                                                      *)
@@ -216,14 +243,17 @@ let test_mesh_equal_lengths _ =
   let w = with_chunk (fresh ()) in
   let chunk = Option.get (World.get_chunk w 0 0 0) in
   let pos, col = World.mesh_chunk w chunk in
-  assert_equal ~msg:"same length" (Array.length pos) (Array.length col)
+  assert_equal ~printer:string_of_int ~msg:"same length" (Array.length pos)
+    (Array.length col)
 
 let test_mesh_divisible_by_3 _ =
   let w = with_chunk (fresh ()) in
   let chunk = Option.get (World.get_chunk w 0 0 0) in
   let pos, col = World.mesh_chunk w chunk in
-  assert_equal ~msg:"pos % 3 = 0" 0 (Array.length pos mod 3);
-  assert_equal ~msg:"col % 3 = 0" 0 (Array.length col mod 3)
+  assert_equal ~printer:string_of_int ~msg:"pos % 3 = 0" 0
+    (Array.length pos mod 3);
+  assert_equal ~printer:string_of_int ~msg:"col % 3 = 0" 0
+    (Array.length col mod 3)
 
 (** An all-Air chunk produces zero vertices. *)
 let test_mesh_sky_empty _ =
@@ -231,8 +261,8 @@ let test_mesh_sky_empty _ =
   World.generate_chunk w ~cx:0 ~cy:5 ~cz:0;
   let chunk = Option.get (World.get_chunk w 0 5 0) in
   let pos, col = World.mesh_chunk w chunk in
-  assert_equal ~msg:"sky pos empty" 0 (Array.length pos);
-  assert_equal ~msg:"sky col empty" 0 (Array.length col)
+  assert_equal ~printer:string_of_int ~msg:"sky pos empty" 0 (Array.length pos);
+  assert_equal ~printer:string_of_int ~msg:"sky col empty" 0 (Array.length col)
 
 (** A non-empty chunk has a non-empty mesh. *)
 let test_mesh_nonempty _ =
@@ -257,8 +287,10 @@ let test_mesh_single_block_face_count _ =
   World.set_block w 0 0 0 Block.Stone;
   let chunk = Option.get (World.get_chunk w 0 0 0) in
   let pos, col = World.mesh_chunk w chunk in
-  assert_equal ~msg:"6 faces × 6 verts × 3 floats = 108" 108 (Array.length pos);
-  assert_equal ~msg:"colors same count" 108 (Array.length col)
+  assert_equal ~printer:string_of_int ~msg:"6 faces × 6 verts × 3 floats = 108"
+    108 (Array.length pos);
+  assert_equal ~printer:string_of_int ~msg:"colors same count" 108
+    (Array.length col)
 
 (** All colour component values are in [0, 1]. *)
 let test_mesh_color_in_range _ =
@@ -284,9 +316,9 @@ let test_add_chunk_inserts _ =
   match World.get_chunk w 2 0 (-3) with
   | None -> assert_failure "add_chunk did not insert"
   | Some c' ->
-      assert_equal 2 (Chunk.x c');
-      assert_equal 0 (Chunk.y c');
-      assert_equal (-3) (Chunk.z c')
+      assert_equal ~printer:string_of_int 2 (Chunk.x c');
+      assert_equal ~printer:string_of_int 0 (Chunk.y c');
+      assert_equal ~printer:string_of_int (-3) (Chunk.z c')
 
 let test_add_chunk_replaces _ =
   let w = fresh () in
@@ -296,16 +328,17 @@ let test_add_chunk_replaces _ =
   World.add_chunk w (Chunk.create ~x:0 ~y:0 ~z:0 ~blocks:dirt);
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"replace, not duplicate" 1 !count;
-  assert_equal ~msg:"second chunk wins" Block.Dirt (World.get_block w 0 0 0)
+  assert_equal ~printer:string_of_int ~msg:"replace, not duplicate" 1 !count;
+  assert_equal ~printer:pp_block ~msg:"second chunk wins" Block.Dirt
+    (World.get_block w 0 0 0)
 
 let test_remove_chunk _ =
   let w = with_chunk (fresh ()) in
   assert_bool "chunk loaded before remove" (World.get_chunk w 0 0 0 <> None);
   World.remove_chunk w 0 0 0;
-  assert_equal ~msg:"get_chunk → None after remove" None
+  assert_equal ~printer:pp_chunk_opt ~msg:"get_chunk → None after remove" None
     (World.get_chunk w 0 0 0);
-  assert_equal ~msg:"get_block → Air after remove" Block.Air
+  assert_equal ~printer:pp_block ~msg:"get_block → Air after remove" Block.Air
     (World.get_block w 0 0 0)
 
 let test_remove_missing_noop _ =
@@ -314,7 +347,7 @@ let test_remove_missing_noop _ =
   World.remove_chunk w 42 42 42;
   let count = ref 0 in
   World.iter w (fun _ -> incr count);
-  assert_equal ~msg:"empty stays empty" 0 !count
+  assert_equal ~printer:string_of_int ~msg:"empty stays empty" 0 !count
 
 let test_add_then_remove_iter _ =
   let w = fresh () in
@@ -324,7 +357,9 @@ let test_add_then_remove_iter _ =
   World.remove_chunk w 1 0 0;
   let found = ref [] in
   World.iter w (fun c -> found := (Chunk.x c, Chunk.y c, Chunk.z c) :: !found);
-  assert_equal ~msg:"only chunk 2 remains" [ (2, 0, 0) ] !found
+  assert_equal ~printer:pp_xyz_list ~msg:"only chunk 2 remains"
+    [ (2, 0, 0) ]
+    !found
 
 let tests =
   "World"
