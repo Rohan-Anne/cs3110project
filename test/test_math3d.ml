@@ -427,6 +427,98 @@ let qcheck_test_add_comm =
       && abs_float (ab.y -. ba.y) < 1e-9
       && abs_float (ab.z -. ba.z) < 1e-9)
 
+(* ------------------------------------------------------------------ *)
+(*  {1 mat4 — multiply non-commutativity}                             *)
+(* ------------------------------------------------------------------ *)
+
+(** In general [A × B ≠ B × A] for 3-D rotations. *)
+let test_multiply_not_commutative _ =
+  let rx = Math3d.rotation_x 0.5 in
+  let ry = Math3d.rotation_y 0.3 in
+  let ab = Math3d.multiply rx ry in
+  let ba = Math3d.multiply ry rx in
+  let same = Array.for_all2 (fun a b -> abs_float (a -. b) < eps) ab ba in
+  assert_bool "Rx(0.5) * Ry(0.3) ≠ Ry(0.3) * Rx(0.5)" (not same)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 mat4 — perspective with non-square aspect}                     *)
+(* ------------------------------------------------------------------ *)
+
+(** With [aspect = 2.0], the x-scale [m[0]] equals [m[5] / 2]. *)
+let test_perspective_non_square _ =
+  let m =
+    Math3d.perspective ~fov_y_radians:(pi /. 3.0) ~aspect:2.0 ~near:0.1
+      ~far:100.0
+  in
+  assert_feq ~msg:"non-square: m[0] = m[5] / 2" (m.(5) /. 2.0) m.(0)
+
+(** With [aspect = 0.5] (portrait), [m[0] = m[5] * 2]. *)
+let test_perspective_portrait_aspect _ =
+  let m =
+    Math3d.perspective ~fov_y_radians:(pi /. 3.0) ~aspect:0.5 ~near:0.1
+      ~far:100.0
+  in
+  assert_feq ~msg:"portrait: m[0] = m[5] * 2" (m.(5) *. 2.0) m.(0)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 mat4 — translation with negative coordinates}                  *)
+(* ------------------------------------------------------------------ *)
+
+(** Negative translation values are stored faithfully in column 3. *)
+let test_translation_negative _ =
+  let m = Math3d.translation ~x:(-1.0) ~y:(-2.0) ~z:(-3.0) in
+  assert_feq ~msg:"neg tx at [12]" (-1.0) m.(12);
+  assert_feq ~msg:"neg ty at [13]" (-2.0) m.(13);
+  assert_feq ~msg:"neg tz at [14]" (-3.0) m.(14)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 mat4 — view_from_camera at origin with zero angles = identity} *)
+(* ------------------------------------------------------------------ *)
+
+(** With position = (0,0,0), yaw = 0, pitch = 0, all three sub-transforms
+    are the identity, so the view matrix must equal the identity. *)
+let test_view_origin_zero_angles _ =
+  let m =
+    Math3d.view_from_camera
+      ~position:(Math3d.vec3 0.0 0.0 0.0)
+      ~yaw:0.0 ~pitch:0.0
+  in
+  assert_m4 ~msg:"view at origin zero angles = identity" (Math3d.identity ()) m
+
+(* ------------------------------------------------------------------ *)
+(*  Additional QCheck properties                                        *)
+(* ------------------------------------------------------------------ *)
+
+(** [sub] is antisymmetric: [sub a b = scale (sub b a) (-1)]. *)
+let qcheck_sub_antisymmetric =
+  QCheck2.Test.make ~name:"sub_antisymmetric" ~count:1000
+    (QCheck2.Gen.pair arb_vec3 arb_vec3) (fun (a, b) ->
+      let ab = Math3d.sub a b in
+      let ba_neg = Math3d.scale (Math3d.sub b a) (-1.0) in
+      abs_float (ab.x -. ba_neg.x) < 1e-9
+      && abs_float (ab.y -. ba_neg.y) < 1e-9
+      && abs_float (ab.z -. ba_neg.z) < 1e-9)
+
+(** [length (scale v s) = |s| * length v]. *)
+let qcheck_length_scale =
+  let arb_scalar = QCheck2.Gen.float_range (-100.0) 100.0 in
+  QCheck2.Test.make ~name:"length_scale_law" ~count:1000
+    (QCheck2.Gen.pair arb_vec3 arb_scalar) (fun (v, s) ->
+      abs_float
+        (Math3d.length (Math3d.scale v s)
+        -. (abs_float s *. Math3d.length v))
+      < 1e-6)
+
+(** [normalize] is idempotent: [normalize (normalize v) = normalize v]. *)
+let qcheck_normalize_idempotent =
+  QCheck2.Test.make ~name:"normalize_idempotent" ~count:1000 arb_vec3
+    (fun v ->
+      let n1 = Math3d.normalize v in
+      let n2 = Math3d.normalize n1 in
+      abs_float (n1.x -. n2.x) < 1e-9
+      && abs_float (n1.y -. n2.y) < 1e-9
+      && abs_float (n1.z -. n2.z) < 1e-9)
+
 let tests =
   "Math3d"
   >::: [
@@ -493,8 +585,20 @@ let tests =
          "view_yaw" >:: test_view_differs_by_yaw;
          "view_pitch" >:: test_view_differs_by_pitch;
          "view_translation" >:: test_view_translation_component;
+         (* multiply *)
+         "multiply_not_commutative" >:: test_multiply_not_commutative;
+         (* perspective *)
+         "perspective_non_square" >:: test_perspective_non_square;
+         "perspective_portrait" >:: test_perspective_portrait_aspect;
+         (* translation negative *)
+         "translation_negative" >:: test_translation_negative;
+         (* view at origin *)
+         "view_origin_zero" >:: test_view_origin_zero_angles;
          (* qcheck tests *)
          QCheck_ounit.to_ounit2_test qcheck_test_add_comm;
+         QCheck_ounit.to_ounit2_test qcheck_sub_antisymmetric;
+         QCheck_ounit.to_ounit2_test qcheck_length_scale;
+         QCheck_ounit.to_ounit2_test qcheck_normalize_idempotent;
        ]
 
 let _ = run_test_tt_main tests

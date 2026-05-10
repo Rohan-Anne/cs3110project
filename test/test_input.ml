@@ -40,6 +40,14 @@ let test_create_resized_false _ =
   let inp = Input.create () in
   assert_bool "resized = false" (not inp.resized)
 
+let test_create_mouse_left_false _ =
+  let inp = Input.create () in
+  assert_bool "mouse_left = false" (not inp.mouse_left)
+
+let test_create_mouse_right_false _ =
+  let inp = Input.create () in
+  assert_bool "mouse_right = false" (not inp.mouse_right)
+
 let test_create_mouse_dx_zero _ =
   let inp = Input.create () in
   if abs_float inp.mouse_dx > 1e-10 then
@@ -143,6 +151,8 @@ let tests =
          "resized_false" >:: test_create_resized_false;
          "mouse_dx_zero" >:: test_create_mouse_dx_zero;
          "mouse_dy_zero" >:: test_create_mouse_dy_zero;
+         "mouse_left_false" >:: test_create_mouse_left_false;
+         "mouse_right_false" >:: test_create_mouse_right_false;
          (* is_down on fresh state *)
          "is_down_w_fresh" >:: test_is_down_fresh_w;
          "is_down_space_fresh" >:: test_is_down_fresh_space;

@@ -135,6 +135,99 @@ let test_jump_overcomes_gravity_step _ =
   assert_bool "can still move upward after first physics step"
     (vel_after_one_frame > 0.0)
 
+(* ------------------------------------------------------------------ *)
+(*  {1 Previously untested constants}                                  *)
+(* ------------------------------------------------------------------ *)
+
+let test_crouch_speed_value _ =
+  assert_feq ~msg:"crouch_speed = 2.0" 2.0 Config.crouch_speed
+
+let test_crouch_height_value _ =
+  assert_feq ~msg:"crouch_height = 1.5" 1.5 Config.crouch_height
+
+let test_max_reach_value _ =
+  assert_feq ~msg:"max_reach = 5.0" 5.0 Config.max_reach
+
+let test_render_distance_value _ =
+  assert_equal ~printer:string_of_int ~msg:"render_distance = 8" 8
+    Config.render_distance
+
+let test_chunk_y_min_value _ =
+  assert_equal ~printer:string_of_int ~msg:"chunk_y_min = -2" (-2)
+    Config.chunk_y_min
+
+let test_chunk_y_max_value _ =
+  assert_equal ~printer:string_of_int ~msg:"chunk_y_max = 1" 1
+    Config.chunk_y_max
+
+let test_chunk_load_budget_value _ =
+  assert_equal ~printer:string_of_int ~msg:"chunk_load_budget = 4" 4
+    Config.chunk_load_budget
+
+let test_crouch_speed_positive _ =
+  assert_bool "crouch_speed > 0" (Config.crouch_speed > 0.0)
+
+let test_crouch_height_positive _ =
+  assert_bool "crouch_height > 0" (Config.crouch_height > 0.0)
+
+let test_max_reach_positive _ =
+  assert_bool "max_reach > 0" (Config.max_reach > 0.0)
+
+let test_render_distance_positive _ =
+  assert_bool "render_distance > 0" (Config.render_distance > 0)
+
+let test_chunk_load_budget_positive _ =
+  assert_bool "chunk_load_budget > 0" (Config.chunk_load_budget > 0)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 ao_shade array}                                                 *)
+(* ------------------------------------------------------------------ *)
+
+(** [ao_shade] has exactly 4 entries, one per AO level 0..3. *)
+let test_ao_shade_length _ =
+  assert_equal ~printer:string_of_int ~msg:"ao_shade length = 4" 4
+    (Array.length Config.ao_shade)
+
+(** Level 0 (no occlusion) must be 1.0 — no darkening applied. *)
+let test_ao_shade_first_one _ =
+  assert_feq ~msg:"ao_shade[0] = 1.0" 1.0 Config.ao_shade.(0)
+
+(** Every multiplier must lie in (0, 1] — never negative or above full brightness. *)
+let test_ao_shade_in_range _ =
+  Array.iteri
+    (fun i v ->
+      assert_bool (Printf.sprintf "ao_shade[%d] > 0" i) (v > 0.0);
+      assert_bool (Printf.sprintf "ao_shade[%d] <= 1" i) (v <= 1.0))
+    Config.ao_shade
+
+(** Higher AO level means more occlusion, so each entry must be strictly smaller
+    than the previous one. *)
+let test_ao_shade_decreasing _ =
+  for i = 0 to Array.length Config.ao_shade - 2 do
+    assert_bool
+      (Printf.sprintf "ao_shade[%d] > ao_shade[%d]" i (i + 1))
+      (Config.ao_shade.(i) > Config.ao_shade.(i + 1))
+  done
+
+(* ------------------------------------------------------------------ *)
+(*  {1 Relational invariants for new constants}                        *)
+(* ------------------------------------------------------------------ *)
+
+(** Crouching must be slower than normal movement. *)
+let test_crouch_speed_lt_move _ =
+  assert_bool "crouch_speed < move_speed"
+    (Config.crouch_speed < Config.move_speed)
+
+(** A crouched player must be shorter than a standing player. *)
+let test_crouch_height_lt_player_height _ =
+  assert_bool "crouch_height < player_height"
+    (Config.crouch_height < Config.player_height)
+
+(** The y-range of loaded chunks must form a valid interval. *)
+let test_chunk_y_min_lt_max _ =
+  assert_bool "chunk_y_min < chunk_y_max"
+    (Config.chunk_y_min < Config.chunk_y_max)
+
 let tests =
   "Config"
   >::: [
@@ -170,6 +263,30 @@ let tests =
          "fov_in_range" >:: test_fov_in_range;
          "player_taller_than_wide" >:: test_player_taller_than_wide;
          "jump_overcomes_gravity" >:: test_jump_overcomes_gravity_step;
+         (* New exact values *)
+         "crouch_speed_value" >:: test_crouch_speed_value;
+         "crouch_height_value" >:: test_crouch_height_value;
+         "max_reach_value" >:: test_max_reach_value;
+         "render_distance_value" >:: test_render_distance_value;
+         "chunk_y_min_value" >:: test_chunk_y_min_value;
+         "chunk_y_max_value" >:: test_chunk_y_max_value;
+         "chunk_load_budget_value" >:: test_chunk_load_budget_value;
+         (* New sign invariants *)
+         "crouch_speed_positive" >:: test_crouch_speed_positive;
+         "crouch_height_positive" >:: test_crouch_height_positive;
+         "max_reach_positive" >:: test_max_reach_positive;
+         "render_distance_positive" >:: test_render_distance_positive;
+         "chunk_load_budget_positive" >:: test_chunk_load_budget_positive;
+         (* ao_shade *)
+         "ao_shade_length" >:: test_ao_shade_length;
+         "ao_shade_first_one" >:: test_ao_shade_first_one;
+         "ao_shade_in_range" >:: test_ao_shade_in_range;
+         "ao_shade_decreasing" >:: test_ao_shade_decreasing;
+         (* New relational invariants *)
+         "crouch_speed_lt_move" >:: test_crouch_speed_lt_move;
+         "crouch_height_lt_player_height"
+         >:: test_crouch_height_lt_player_height;
+         "chunk_y_min_lt_max" >:: test_chunk_y_min_lt_max;
        ]
 
 let _ = run_test_tt_main tests

@@ -193,6 +193,22 @@ let test_poll_empty_returns_none _ =
       assert_equal ~printer:pp_poll_result ~msg:"poll on empty queue is None"
         None (Chunk_worker.poll w))
 
+(* ------------------------------------------------------------------ *)
+(*  pending — true between request and poll                            *)
+(* ------------------------------------------------------------------ *)
+
+(** [pending] returns [true] after [request] and before any [poll] call.
+    The worker clears the pending_set only when [poll] or [poll_blocking]
+    removes the result, so the flag must be observable here. *)
+let test_pending_true_after_request _ =
+  with_worker (fun w ->
+      Chunk_worker.request w (3, 4, 5);
+      assert_bool "pending is true immediately after request"
+        (Chunk_worker.pending w (3, 4, 5));
+      (* drain to keep worker clean for destroy *)
+      let _ = Chunk_worker.poll_blocking w in
+      ())
+
 let tests =
   "Chunk_worker"
   >::: [
@@ -209,6 +225,7 @@ let tests =
          >:: test_pending_false_when_never_requested;
          "pending_clears_after_poll" >:: test_pending_clears_after_poll;
          "poll_empty_returns_none" >:: test_poll_empty_returns_none;
+         "pending_true_after_request" >:: test_pending_true_after_request;
        ]
 
 let _ = run_test_tt_main tests

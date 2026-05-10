@@ -268,6 +268,142 @@ let test_blocked_y_free_xz _ =
   assert_feq ~msg:"free dz" 1.0 d.z;
   assert_bool "clipped dy" (d.y > -5.0)
 
+(* ------------------------------------------------------------------ *)
+(*  {1 at_position — optional height parameter}                        *)
+(* ------------------------------------------------------------------ *)
+
+(** With a custom height of 3.0, the y-extent of the AABB equals 3.0. *)
+let test_custom_height _ =
+  let box = Physics.at_position ~height:3.0 (Math3d.vec3 0.0 0.0 0.0) in
+  assert_feq ~msg:"custom height = 3.0" 3.0 (box.max.y -. box.min.y)
+
+(** The x and z extents are still player_width regardless of custom height. *)
+let test_custom_height_xy_unchanged _ =
+  let box = Physics.at_position ~height:3.0 (Math3d.vec3 0.0 0.0 0.0) in
+  assert_feq ~msg:"x-extent = player_width" Config.player_width
+    (box.max.x -. box.min.x);
+  assert_feq ~msg:"z-extent = player_width" Config.player_width
+    (box.max.z -. box.min.z)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 has_ground_below}                                               *)
+(* ------------------------------------------------------------------ *)
+
+(** In an empty world (no chunks) there is no solid block below. *)
+let test_has_ground_below_empty _ =
+  let w = empty_world () in
+  let box = Physics.at_position (Math3d.vec3 0.5 5.0 0.5) in
+  assert_bool "no ground in empty world"
+    (not (Physics.has_ground_below w box))
+
+(** When a solid block is placed directly below the AABB, [has_ground_below]
+    returns true.
+
+    [at_position (0.5, 5.0, 0.5)]:
+      min.y = 5.0 − 1.6 = 3.4   →   by = floor(3.4 − ε) = 3
+      bx  = floor((0.2+0.8)/2 − ε) = floor(0.4999) = 0
+      bz  = floor(0.4999) = 0
+    So the function checks block (0, 3, 0). *)
+let test_has_ground_below_solid _ =
+  let w = World.create () in
+  World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
+  let n = Config.chunk_size in
+  for bx = 0 to n - 1 do
+    for by = 0 to n - 1 do
+      for bz = 0 to n - 1 do
+        World.set_block w bx by bz Block.Air
+      done
+    done
+  done;
+  World.set_block w 0 3 0 Block.Stone;
+  let box = Physics.at_position (Math3d.vec3 0.5 5.0 0.5) in
+  assert_bool "ground detected below player" (Physics.has_ground_below w box)
+
+(** After removing the block, [has_ground_below] reverts to false. *)
+let test_has_ground_below_removed _ =
+  let w = World.create () in
+  World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
+  let n = Config.chunk_size in
+  for bx = 0 to n - 1 do
+    for by = 0 to n - 1 do
+      for bz = 0 to n - 1 do
+        World.set_block w bx by bz Block.Air
+      done
+    done
+  done;
+  World.set_block w 0 3 0 Block.Stone;
+  World.set_block w 0 3 0 Block.Air;
+  let box = Physics.at_position (Math3d.vec3 0.5 5.0 0.5) in
+  assert_bool "no ground after block removed"
+    (not (Physics.has_ground_below w box))
+
+(* ------------------------------------------------------------------ *)
+(*  {1 move — blocked in +X and +Z}                                   *)
+(* ------------------------------------------------------------------ *)
+
+(** A stone wall at x = 5 clips a rightward (+X) delta. *)
+let test_blocked_positive_x _ =
+  let w = World.create () in
+  World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
+  let n = Config.chunk_size in
+  for bx = 0 to n - 1 do
+    for by = 0 to n - 1 do
+      for bz = 0 to n - 1 do
+        World.set_block w bx by bz Block.Air
+      done
+    done
+  done;
+  for by = 0 to n - 1 do
+    for bz = 0 to n - 1 do
+      World.set_block w 5 by bz Block.Stone
+    done
+  done;
+  (* player at x=3.0: max.x = 3.3, stone wall starts at x=5 *)
+  let pos = Math3d.vec3 3.0 8.0 0.5 in
+  let box = Physics.at_position pos in
+  let d = Physics.move w box (Math3d.vec3 10.0 0.0 0.0) in
+  assert_bool "+x clipped by stone wall (dx < 10)" (d.x < 10.0);
+  assert_bool "+x movement positive (dx > 0)" (d.x > 0.0)
+
+(** A stone wall at z = 5 clips a forward (+Z) delta. *)
+let test_blocked_positive_z _ =
+  let w = World.create () in
+  World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
+  let n = Config.chunk_size in
+  for bx = 0 to n - 1 do
+    for by = 0 to n - 1 do
+      for bz = 0 to n - 1 do
+        World.set_block w bx by bz Block.Air
+      done
+    done
+  done;
+  for by = 0 to n - 1 do
+    for bx = 0 to n - 1 do
+      World.set_block w bx by 5 Block.Stone
+    done
+  done;
+  let pos = Math3d.vec3 0.5 8.0 3.0 in
+  let box = Physics.at_position pos in
+  let d = Physics.move w box (Math3d.vec3 0.0 0.0 10.0) in
+  assert_bool "+z clipped by stone wall (dz < 10)" (d.z < 10.0);
+  assert_bool "+z movement positive (dz > 0)" (d.z > 0.0)
+
+(* ------------------------------------------------------------------ *)
+(*  QCheck property                                                     *)
+(* ------------------------------------------------------------------ *)
+
+(** In an empty world every requested displacement is returned unchanged. *)
+let qcheck_free_movement_empty_world =
+  let arb_delta = QCheck2.Gen.float_range (-5.0) 5.0 in
+  QCheck2.Test.make ~name:"free_movement_in_empty_world" ~count:500
+    (QCheck2.Gen.triple arb_delta arb_delta arb_delta) (fun (dx, dy, dz) ->
+      let w = World.create () in
+      let box = Physics.at_position (Math3d.vec3 0.5 50.0 0.5) in
+      let d = Physics.move w box (Math3d.vec3 dx dy dz) in
+      abs_float (d.x -. dx) < 1e-9
+      && abs_float (d.y -. dy) < 1e-9
+      && abs_float (d.z -. dz) < 1e-9)
+
 let tests =
   "Physics"
   >::: [
@@ -297,6 +433,18 @@ let tests =
          (* collision *)
          "blocked_down" >:: test_blocked_downward;
          "blocked_y_free_xz" >:: test_blocked_y_free_xz;
+         (* custom height *)
+         "custom_height" >:: test_custom_height;
+         "custom_height_xy" >:: test_custom_height_xy_unchanged;
+         (* has_ground_below *)
+         "ground_below_empty" >:: test_has_ground_below_empty;
+         "ground_below_solid" >:: test_has_ground_below_solid;
+         "ground_below_removed" >:: test_has_ground_below_removed;
+         (* blocked +X and +Z *)
+         "blocked_pos_x" >:: test_blocked_positive_x;
+         "blocked_pos_z" >:: test_blocked_positive_z;
+         (* qcheck *)
+         QCheck_ounit.to_ounit2_test qcheck_free_movement_empty_world;
        ]
 
 let _ = run_test_tt_main tests

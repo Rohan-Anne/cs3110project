@@ -220,6 +220,52 @@ let test_fill_chunk_agrees_with_height_at _ =
     done
   done
 
+(* ------------------------------------------------------------------ *)
+(*  {1 fill_chunk — determinism}                                       *)
+(* ------------------------------------------------------------------ *)
+
+(** Calling [fill_chunk] twice with the same arguments must return arrays
+    that are element-wise equal. *)
+let test_fill_chunk_deterministic _ =
+  let a = Terrain.fill_chunk ~cx:0 ~cy:0 ~cz:0 in
+  let b = Terrain.fill_chunk ~cx:0 ~cy:0 ~cz:0 in
+  Array.iteri
+    (fun i blk ->
+      assert_equal ~printer:pp_block
+        ~msg:(Printf.sprintf "fill_chunk deterministic at index %d" i)
+        blk b.(i))
+    a
+
+(** Determinism holds for a non-trivial chunk coordinate as well. *)
+let test_fill_chunk_deterministic_other _ =
+  let a = Terrain.fill_chunk ~cx:3 ~cy:(-1) ~cz:2 in
+  let b = Terrain.fill_chunk ~cx:3 ~cy:(-1) ~cz:2 in
+  assert_bool "fill_chunk(3,-1,2) deterministic"
+    (Array.for_all2 ( = ) a b)
+
+(* ------------------------------------------------------------------ *)
+(*  QCheck properties                                                   *)
+(* ------------------------------------------------------------------ *)
+
+(** [fill_chunk] always returns exactly [cs³] blocks, regardless of the
+    chunk coordinate. *)
+let qcheck_fill_chunk_size =
+  let arb_coord = QCheck2.Gen.int_range (-50) 50 in
+  QCheck2.Test.make ~name:"fill_chunk_always_cs3" ~count:200
+    (QCheck2.Gen.triple arb_coord arb_coord arb_coord) (fun (cx, cy, cz) ->
+      let blocks = Terrain.fill_chunk ~cx ~cy ~cz in
+      Array.length blocks = cs * cs * cs)
+
+(** [fill_chunk] called twice for the same coordinate always produces the
+    same block array. *)
+let qcheck_fill_chunk_deterministic =
+  let arb_coord = QCheck2.Gen.int_range (-20) 20 in
+  QCheck2.Test.make ~name:"fill_chunk_deterministic" ~count:100
+    (QCheck2.Gen.triple arb_coord arb_coord arb_coord) (fun (cx, cy, cz) ->
+      let a = Terrain.fill_chunk ~cx ~cy ~cz in
+      let b = Terrain.fill_chunk ~cx ~cy ~cz in
+      Array.for_all2 ( = ) a b)
+
 let tests =
   "Terrain"
   >::: [
@@ -243,6 +289,12 @@ let tests =
          (* layering *)
          "layering" >:: test_fill_chunk_layering;
          "agrees_height_at" >:: test_fill_chunk_agrees_with_height_at;
+         (* determinism *)
+         "fill_deterministic" >:: test_fill_chunk_deterministic;
+         "fill_deterministic_other" >:: test_fill_chunk_deterministic_other;
+         (* qcheck *)
+         QCheck_ounit.to_ounit2_test qcheck_fill_chunk_size;
+         QCheck_ounit.to_ounit2_test qcheck_fill_chunk_deterministic;
        ]
 
 let _ = run_test_tt_main tests

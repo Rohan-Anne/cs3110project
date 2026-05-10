@@ -361,6 +361,119 @@ let test_add_then_remove_iter _ =
     [ (2, 0, 0) ]
     !found
 
+(* ------------------------------------------------------------------ *)
+(*  {1 raycast}                                                        *)
+(* ------------------------------------------------------------------ *)
+
+(** printer for the raycast result option. *)
+let pp_raycast = function
+  | None -> "None"
+  | Some (bx, by, bz, nx, ny, nz) ->
+      Printf.sprintf "Some (%d,%d,%d) normal (%d,%d,%d)" bx by bz nx ny nz
+
+(** Helper: fresh chunk cleared to all Air, then optionally a single
+    Stone block set. Returns the world with cx=cy=cz=0 loaded. *)
+let world_with_stone bx by bz =
+  let w = fresh () in
+  World.generate_chunk w ~cx:0 ~cy:0 ~cz:0;
+  for x = 0 to cs - 1 do
+    for y = 0 to cs - 1 do
+      for z = 0 to cs - 1 do
+        World.set_block w x y z Block.Air
+      done
+    done
+  done;
+  World.set_block w bx by bz Block.Stone;
+  w
+
+(** In an empty world (no chunks) [raycast] always returns [None]. *)
+let test_raycast_none_empty _ =
+  let w = fresh () in
+  let origin = Math3d.vec3 0.5 0.5 (-5.0) in
+  let dir = Math3d.vec3 0.0 0.0 1.0 in
+  assert_equal ~printer:pp_raycast ~msg:"empty world → None" None
+    (World.raycast w ~origin ~dir ~max_dist:100.0)
+
+(** A ray aimed along +Z at a block directly ahead must hit that block. *)
+let test_raycast_hits_block _ =
+  let w = world_with_stone 0 5 8 in
+  (* origin in front of the block along -Z, traveling +Z *)
+  let origin = Math3d.vec3 0.5 5.5 (-2.0) in
+  let dir = Math3d.vec3 0.0 0.0 1.0 in
+  match World.raycast w ~origin ~dir ~max_dist:20.0 with
+  | None -> assert_failure "expected raycast hit, got None"
+  | Some (rx, ry, rz, _, _, _) ->
+      assert_equal ~printer:string_of_int ~msg:"hit bx" 0 rx;
+      assert_equal ~printer:string_of_int ~msg:"hit by" 5 ry;
+      assert_equal ~printer:string_of_int ~msg:"hit bz" 8 rz
+
+(** When [max_dist] is smaller than the distance to the block, [raycast]
+    returns [None]. *)
+let test_raycast_max_dist _ =
+  let w = world_with_stone 0 5 8 in
+  (* block is ~10 units away; max_dist = 5 should miss it *)
+  let origin = Math3d.vec3 0.5 5.5 (-2.0) in
+  let dir = Math3d.vec3 0.0 0.0 1.0 in
+  assert_equal ~printer:pp_raycast ~msg:"max_dist stops traversal" None
+    (World.raycast w ~origin ~dir ~max_dist:5.0)
+
+(** A ray traveling in +Z hits a block on its -Z face; the face normal must
+    be (0, 0, -1). *)
+let test_raycast_normal_neg_z _ =
+  let w = world_with_stone 0 5 8 in
+  let origin = Math3d.vec3 0.5 5.5 (-2.0) in
+  let dir = Math3d.vec3 0.0 0.0 1.0 in
+  match World.raycast w ~origin ~dir ~max_dist:20.0 with
+  | None -> assert_failure "expected hit"
+  | Some (_, _, _, nx, ny, nz) ->
+      assert_equal ~printer:string_of_int ~msg:"+Z ray: nx = 0" 0 nx;
+      assert_equal ~printer:string_of_int ~msg:"+Z ray: ny = 0" 0 ny;
+      assert_equal ~printer:string_of_int ~msg:"+Z ray: nz = -1" (-1) nz
+
+(** A ray descending along -Y hits a block on its +Y face; normal = (0,1,0). *)
+let test_raycast_normal_from_above _ =
+  let w = world_with_stone 0 5 0 in
+  let origin = Math3d.vec3 0.5 13.0 0.5 in
+  let dir = Math3d.vec3 0.0 (-1.0) 0.0 in
+  match World.raycast w ~origin ~dir ~max_dist:20.0 with
+  | None -> assert_failure "expected hit from above"
+  | Some (_, _, _, nx, ny, nz) ->
+      assert_equal ~printer:string_of_int ~msg:"-Y ray: nx = 0" 0 nx;
+      assert_equal ~printer:string_of_int ~msg:"-Y ray: ny = 1" 1 ny;
+      assert_equal ~printer:string_of_int ~msg:"-Y ray: nz = 0" 0 nz
+
+(** A ray aimed away from the block misses it entirely. *)
+let test_raycast_miss _ =
+  let w = world_with_stone 0 5 8 in
+  (* ray pointing -Z, block is in +Z direction: no hit *)
+  let origin = Math3d.vec3 0.5 5.5 (-2.0) in
+  let dir = Math3d.vec3 0.0 0.0 (-1.0) in
+  assert_equal ~printer:pp_raycast ~msg:"ray pointing away → None" None
+    (World.raycast w ~origin ~dir ~max_dist:20.0)
+
+(* ------------------------------------------------------------------ *)
+(*  QCheck property                                                     *)
+(* ------------------------------------------------------------------ *)
+
+(** In a world with no chunks, [raycast] always returns [None] regardless
+    of origin and direction. *)
+let qcheck_raycast_empty_none =
+  let arb_float = QCheck2.Gen.float_range (-100.0) 100.0 in
+  let arb_dir = QCheck2.Gen.float_range (-1.0) 1.0 in
+  QCheck2.Test.make ~name:"raycast_empty_world_none" ~count:500
+    (QCheck2.Gen.pair
+       (QCheck2.Gen.triple arb_float arb_float arb_float)
+       (QCheck2.Gen.triple arb_dir arb_dir arb_dir))
+    (fun ((ox, oy, oz), (dx, dy, dz)) ->
+      let len = sqrt ((dx *. dx) +. (dy *. dy) +. (dz *. dz)) in
+      (* skip degenerate zero-direction vectors *)
+      if len < 1e-9 then true
+      else
+        let w = World.create () in
+        let origin = Math3d.vec3 ox oy oz in
+        let dir = Math3d.vec3 dx dy dz in
+        World.raycast w ~origin ~dir ~max_dist:1000.0 = None)
+
 let tests =
   "World"
   >::: [
@@ -400,6 +513,15 @@ let tests =
          "remove_chunk" >:: test_remove_chunk;
          "remove_missing_noop" >:: test_remove_missing_noop;
          "add_then_remove_iter" >:: test_add_then_remove_iter;
+         (* raycast *)
+         "raycast_none_empty" >:: test_raycast_none_empty;
+         "raycast_hits_block" >:: test_raycast_hits_block;
+         "raycast_max_dist" >:: test_raycast_max_dist;
+         "raycast_normal_neg_z" >:: test_raycast_normal_neg_z;
+         "raycast_normal_from_above" >:: test_raycast_normal_from_above;
+         "raycast_miss" >:: test_raycast_miss;
+         (* qcheck *)
+         QCheck_ounit.to_ounit2_test qcheck_raycast_empty_none;
        ]
 
 let _ = run_test_tt_main tests

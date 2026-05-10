@@ -188,6 +188,61 @@ let test_different_points_different _ =
   assert_bool "finite v1" (Float.is_finite v1);
   assert_bool "finite v2" (Float.is_finite v2)
 
+(* ------------------------------------------------------------------ *)
+(*  {1 Periodicity invariant}                                          *)
+(*  The permutation table is indexed by (floor x) land 255, making    *)
+(*  [perlin2d] exactly periodic with period 256 in both x and z.     *)
+(* ------------------------------------------------------------------ *)
+
+(** [perlin2d (x + 256) z = perlin2d x z] for a sample of x, z values. *)
+let test_periodic_x _ =
+  let pairs =
+    [ (0, 0); (3, 7); (-2, 5); (100, 50); (0, -3); (127, 127) ]
+  in
+  List.iter
+    (fun (n, m) ->
+      let x = float_of_int n and z = float_of_int m in
+      let v1 = Noise.perlin2d x z in
+      let v2 = Noise.perlin2d (x +. 256.0) z in
+      assert_feq
+        ~msg:(Printf.sprintf "periodic x at (%d,%d)" n m)
+        v1 v2)
+    pairs
+
+(** [perlin2d x (z + 256) = perlin2d x z] for a sample of x, z values. *)
+let test_periodic_z _ =
+  let pairs =
+    [ (0, 0); (3, 7); (-2, 5); (100, 50); (-3, 0); (63, 200) ]
+  in
+  List.iter
+    (fun (n, m) ->
+      let x = float_of_int n and z = float_of_int m in
+      let v1 = Noise.perlin2d x z in
+      let v2 = Noise.perlin2d x (z +. 256.0) in
+      assert_feq
+        ~msg:(Printf.sprintf "periodic z at (%d,%d)" n m)
+        v1 v2)
+    pairs
+
+(* ------------------------------------------------------------------ *)
+(*  QCheck properties                                                   *)
+(* ------------------------------------------------------------------ *)
+
+(** Range [-1, 1] holds for arbitrary real-valued coordinates. *)
+let qcheck_range_random =
+  let arb_coord = QCheck2.Gen.float_range (-10000.0) 10000.0 in
+  QCheck2.Test.make ~name:"perlin2d_in_range_random" ~count:2000
+    (QCheck2.Gen.pair arb_coord arb_coord) (fun (x, z) ->
+      let v = Noise.perlin2d x z in
+      v >= -1.0 && v <= 1.0)
+
+(** Periodicity with period 256 holds for arbitrary real-valued coordinates. *)
+let qcheck_periodic_x =
+  let arb_coord = QCheck2.Gen.float_range (-1000.0) 1000.0 in
+  QCheck2.Test.make ~name:"perlin2d_periodic_x_256" ~count:1000
+    (QCheck2.Gen.pair arb_coord arb_coord) (fun (x, z) ->
+      abs_float (Noise.perlin2d x z -. Noise.perlin2d (x +. 256.0) z) < 1e-10)
+
 let tests =
   "Noise"
   >::: [
@@ -209,6 +264,12 @@ let tests =
          (* Non-trivial output *)
          "nonzero_midpoint" >:: test_nonzero_midpoint;
          "different_points" >:: test_different_points_different;
+         (* Periodicity *)
+         "periodic_x" >:: test_periodic_x;
+         "periodic_z" >:: test_periodic_z;
+         (* QCheck *)
+         QCheck_ounit.to_ounit2_test qcheck_range_random;
+         QCheck_ounit.to_ounit2_test qcheck_periodic_x;
        ]
 
 let _ = run_test_tt_main tests

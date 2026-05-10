@@ -319,6 +319,123 @@ let test_view_deterministic _ =
   let same = Array.for_all2 (fun a b -> abs_float (a -. b) < eps) m1 m2 in
   assert_bool "view is deterministic" same
 
+(* ------------------------------------------------------------------ *)
+(*  {1 look_dir}                                                       *)
+(* ------------------------------------------------------------------ *)
+
+(** At yaw = 0, pitch = 0 the camera looks straight along -Z.
+    look_dir = (−sin0·cos0, sin0, −cos0·cos0) = (0, 0, −1). *)
+let test_look_dir_forward _ =
+  let c = make_cam () in
+  let d = Camera.look_dir c in
+  assert_feq ~msg:"look forward x = 0" 0.0 d.x;
+  assert_feq ~msg:"look forward y = 0" 0.0 d.y;
+  assert_feq ~msg:"look forward z = -1" (-1.0) d.z
+
+(** Positive pitch (looking up) → positive y component. *)
+let test_look_dir_up _ =
+  let c = make_cam ~pitch:Config.pitch_limit () in
+  let d = Camera.look_dir c in
+  assert_bool "look up: y > 0" (d.y > 0.0)
+
+(** Negative pitch (looking down) → negative y component. *)
+let test_look_dir_down _ =
+  let c = make_cam ~pitch:(-.Config.pitch_limit) () in
+  let d = Camera.look_dir c in
+  assert_bool "look down: y < 0" (d.y < 0.0)
+
+(** [look_dir] always returns a unit vector. *)
+let test_look_dir_unit _ =
+  let cases =
+    [ (0.0, 0.0); (0.3, 0.5); (1.5, -1.0); (Float.pi, 0.3) ]
+  in
+  List.iter
+    (fun (yaw, pitch) ->
+      let c = make_cam ~yaw ~pitch () in
+      let len = Math3d.length (Camera.look_dir c) in
+      assert_feq ~eps:1e-5
+        ~msg:(Printf.sprintf "unit length at yaw=%.1f pitch=%.1f" yaw pitch)
+        1.0 len)
+    cases
+
+(** Changing yaw rotates look_dir in the XZ plane. *)
+let test_look_dir_yaw_affects_xz _ =
+  let c1 = make_cam ~yaw:0.0 () in
+  let c2 = make_cam ~yaw:1.0 () in
+  let d1 = Camera.look_dir c1 and d2 = Camera.look_dir c2 in
+  assert_bool "yaw=0 and yaw=1 give different XZ look directions"
+    (abs_float (d1.x -. d2.x) > 1e-5 || abs_float (d1.z -. d2.z) > 1e-5)
+
+(* ------------------------------------------------------------------ *)
+(*  {1 movement_from_input — additional keys}                          *)
+(* ------------------------------------------------------------------ *)
+
+(** S key at yaw = 0: movement points in the +Z direction (backward). *)
+let test_movement_s_key _ =
+  let c = make_cam ~yaw:0.0 () in
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.s)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
+  assert_feq ~msg:"S dx = 0" 0.0 m.x;
+  assert_feq ~msg:"S dy = 0" 0.0 m.y;
+  assert_feq ~msg:"S dz = +1" 1.0 m.z
+
+(** LShift key (crouch/down in creative): movement points in -Y. *)
+let test_movement_lshift_key _ =
+  let c = make_cam () in
+  let m =
+    Camera.movement_from_input c
+      (input_with_key Sdl.Scancode.lshift)
+      ~move_speed:1.0 ~sprint_speed:2.0 ~dt:1.0
+  in
+  assert_feq ~msg:"LShift dy = -1" (-1.0) m.y
+
+(* ------------------------------------------------------------------ *)
+(*  {1 ground_movement_from_input — sprint and diagonal}              *)
+(* ------------------------------------------------------------------ *)
+
+(** Sprint (W + Ctrl) applies sprint_speed, not move_speed. *)
+let test_ground_movement_sprint _ =
+  let c = make_cam ~yaw:0.0 () in
+  let inp = input_with_key Sdl.Scancode.w in
+  Hashtbl.replace inp.keys_down Sdl.Scancode.lctrl true;
+  let m =
+    Camera.ground_movement_from_input c inp ~move_speed:1.0 ~sprint_speed:2.0
+      ~dt:1.0
+  in
+  assert_feq ~msg:"ground sprint dz = -2" (-2.0) m.z;
+  assert_feq ~msg:"ground sprint dy = 0" 0.0 m.y
+
+(** Diagonal ground movement (W + D) is normalised — same speed as cardinal. *)
+let test_ground_movement_diagonal_normalized _ =
+  let c = make_cam ~yaw:0.0 () in
+  let inp = input_with_key Sdl.Scancode.w in
+  Hashtbl.replace inp.keys_down Sdl.Scancode.d true;
+  let m =
+    Camera.ground_movement_from_input c inp ~move_speed:1.0 ~sprint_speed:2.0
+      ~dt:1.0
+  in
+  let len = Math3d.length m in
+  assert_feq ~eps:1e-4 ~msg:"ground diagonal length = 1" 1.0 len;
+  assert_feq ~msg:"ground diagonal y = 0" 0.0 m.y
+
+(* ------------------------------------------------------------------ *)
+(*  QCheck properties                                                   *)
+(* ------------------------------------------------------------------ *)
+
+(** [look_dir] is always a unit vector for any valid yaw and pitch. *)
+let qcheck_look_dir_unit =
+  let arb_yaw = QCheck2.Gen.float_range 0.0 (2.0 *. Float.pi) in
+  let arb_pitch =
+    QCheck2.Gen.float_range (-.Config.pitch_limit) Config.pitch_limit
+  in
+  QCheck2.Test.make ~name:"look_dir_always_unit_length" ~count:1000
+    (QCheck2.Gen.pair arb_yaw arb_pitch) (fun (yaw, pitch) ->
+      let c = make_cam ~yaw ~pitch () in
+      abs_float (Math3d.length (Camera.look_dir c) -. 1.0) < 1e-5)
+
 let tests =
   "Camera"
   >::: [
@@ -358,6 +475,20 @@ let tests =
          "view_pitch" >:: test_view_differs_by_pitch;
          "view_pos" >:: test_view_differs_by_pos;
          "view_deterministic" >:: test_view_deterministic;
+         (* look_dir *)
+         "look_dir_forward" >:: test_look_dir_forward;
+         "look_dir_up" >:: test_look_dir_up;
+         "look_dir_down" >:: test_look_dir_down;
+         "look_dir_unit" >:: test_look_dir_unit;
+         "look_dir_yaw_affects_xz" >:: test_look_dir_yaw_affects_xz;
+         (* additional keys *)
+         "movement_s" >:: test_movement_s_key;
+         "movement_lshift" >:: test_movement_lshift_key;
+         (* ground movement sprint/diagonal *)
+         "ground_sprint" >:: test_ground_movement_sprint;
+         "ground_diagonal" >:: test_ground_movement_diagonal_normalized;
+         (* qcheck *)
+         QCheck_ounit.to_ounit2_test qcheck_look_dir_unit;
        ]
 
 let _ = run_test_tt_main tests
