@@ -26,7 +26,8 @@ git-repo: "https://github.com/Rohan-Anne/MineCaml"
 demo-video-url: "https://youtu.be/kyxe6S7bBzw"
 # Write a short, attention-grabbing description of your project.
 desc: >
-  MineCaml is a 3D voxel game engine, written entirely in OCaml. It creates a 
-  procedurally generated world using Perlin noise, rendered using OpenGL. You
-  can explore the world with full FPS-style movement, with gravity and 
-  collision detection.
+  MineCaml is a 3D voxel game engine, written entirely in OCaml. It creates an
+  infinite procedurally generated world using Perlin noise, rendered using
+  OpenGL. You can explore the world with full FPS-style movement, with gravity,
+  and collision detection. You can also break and place blocks to build your own
+  structures.
